@@ -8,7 +8,9 @@ const config = {
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 	kit: {
-        adapter: adapter(),
+        adapter: adapter({
+            fallback: 'index.html'
+        }),
         alias: {
             // Custom aliases
             '@lib': path.resolve('./src/lib'),
