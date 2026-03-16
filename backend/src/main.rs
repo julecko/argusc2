@@ -2,6 +2,8 @@ mod logger;
 mod ws;
 mod api;
 mod state;
+mod db;
+mod setup;
 
 use tracing::{info};
 use axum::{
@@ -15,7 +17,14 @@ use state::AppState;
 #[tokio::main]
 async fn main() {
     let _guard: logger::LoggerGuard = logger::init();
-    let app_state = AppState::default();
+    
+    let db = db::connect().await;
+    setup::ensure_admin(&db).await;
+
+    let app_state = AppState { 
+        devices: Default::default(),
+        db 
+    };
 
     let static_files = ServeDir::new("../frontend/build")
         .fallback(ServeFile::new("../frontend/build/index.html"));

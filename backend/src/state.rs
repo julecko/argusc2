@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use crate::db::Db;
+use sqlx::Pool;
  
 #[derive(Debug, Clone)]
 pub struct Device {
@@ -19,8 +21,8 @@ impl Device {
     }
 }
  
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct AppState {
     pub devices: Arc<RwLock<HashMap<Uuid, Device>>>,
+    pub db: Pool<Db>,
 }
- 
