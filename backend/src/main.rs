@@ -1,4 +1,5 @@
 mod logger;
+mod ws;
 
 use tracing::{info, warn, error};
 use axum::{
@@ -24,6 +25,7 @@ async fn main() {
 
     let app: Router = Router::new()
         .nest("/api", api_routes)
+        .nest("/ws", ws::router())
         .fallback_service(static_files);
 
     let listener: TcpListener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
