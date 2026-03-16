@@ -13,13 +13,20 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::services::{ServeDir, ServeFile};
 use state::AppState;
+use std::env;
 
 #[tokio::main]
 async fn main() {
     let _guard: logger::LoggerGuard = logger::init();
+
+    let args: Vec<String> = env::args().collect();
     
     let db = db::connect().await;
-    setup::ensure_admin(&db).await;
+    
+    if args.len() > 1 && args[1] == "create-admin" {
+        setup::create_admin(&db).await;
+        return;
+    }
 
     let app_state = AppState { 
         devices: Default::default(),
