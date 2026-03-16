@@ -1,34 +1,32 @@
 mod logger;
 mod ws;
+mod api;
+mod state;
 
-use tracing::{info, warn, error};
+use tracing::{info};
 use axum::{
-    routing::get,
     Router,
 };
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::services::{ServeDir, ServeFile};
-
-// API endpoint
-async fn hello() -> &'static str {
-    "Hello from Rust"
-}
+use state::AppState;
 
 #[tokio::main]
 async fn main() {
     let _guard: logger::LoggerGuard = logger::init();
-    let api_routes: Router = Router::new()
-        .route("/hello", get(hello));
+    let app_state = AppState::default();
 
     let static_files = ServeDir::new("../frontend/build")
         .fallback(ServeFile::new("../frontend/build/index.html"));
 
     let app: Router = Router::new()
-        .nest("/api", api_routes)
+        .nest("/api", api::router())
         .nest("/ws", ws::router())
+        .with_state(app_state)
         .fallback_service(static_files);
 
     let listener: TcpListener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
     info!("Server running at http://127.0.0.1:3000");
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 }
