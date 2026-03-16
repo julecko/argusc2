@@ -15,3 +15,5 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tracing-appender = "0.2.4"
 uuid = { version = "1.22.0", features = ["serde", "v4"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "mysql", "macros"] }
+dotenvy = "0.15.7"
+argon2 = "0.5.3"
