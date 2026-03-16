@@ -1,4 +1,0 @@
-2026-03-16T07:19:54.532716Z  INFO backend::logger: 46: Logger initialized in RELEASE mode (file: logs/app.log)
-2026-03-16T07:19:54.532809Z  INFO backend: 30: Server running at http://127.0.0.1:3000
-2026-03-16T07:20:48.987472Z  INFO backend::logger: 46: Logger initialized in RELEASE mode (file: logs/app.log)
-2026-03-16T07:20:48.987559Z  INFO backend: 30: Server running at http://127.0.0.1:3000
