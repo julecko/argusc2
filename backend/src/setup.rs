@@ -3,22 +3,10 @@ use argon2::{
     Argon2,
 };
 use sqlx::{Pool, MySql};
-use tracing::info;
  
-pub async fn ensure_admin(db: &Pool<MySql>) {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM admins")
-        .fetch_one(db)
-        .await
-        .expect("Failed to query users");
-
-    if count > 0 {
-        return;
-    }
- 
-    info!("No admin user found — first time setup");
-    
+pub async fn create_admin(db: &Pool<MySql>) {
     let username = prompt("Enter admin username: ");
-    
+
     let password = loop {
         let password = prompt("Enter admin password: ");
         let password_check = prompt("Enter admin password again: ");
@@ -29,16 +17,16 @@ pub async fn ensure_admin(db: &Pool<MySql>) {
 
         println!("Passwords do not match, try again");
     };
- 
+
     let hash = hash_password(&password);
- 
+
     sqlx::query("INSERT INTO admins (username, password) VALUES (?, ?)")
         .bind(&username)
         .bind(&hash)
         .execute(db)
         .await
         .expect("Failed to create admin user");
- 
+
     println!("Admin user '{}' created", username);
 }
  
