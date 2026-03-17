@@ -2,15 +2,16 @@
 
 $bg-main: #0b0f14;
 $bg-sidebar: #0f141b;
-$bg-card: #151b23;
+$bg-card: #1a1f25;
 
 $text-primary: #e6edf3;
 $text-muted: #8b949e;
 
-$accent: #e11d2e;
-$accent-hover: #ff2e43;
+$accent: oklch(0.577 0.245 27.325);
+$accent-hover: oklch(0.577 0.245 27.325);
+$second-accent-hover: #5631c5;
 
 $border: #1f2933;
 
-$radius: 12px;
+$radius: 10px;
 $transition: 0.2s ease;
