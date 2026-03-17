@@ -1,23 +1,26 @@
 <script lang="ts">
-    import Icon from '$components/ui/Icon.svelte';
+	import ProjectIcon from '$components/ui/icons/ProjectIcon.svelte';
+    import Icon from '$components/ui/icons/NavbarIcon.svelte';
+	import DashboardSVG from '$assets/DashboardIcon.svg?raw';
+	import DevicesSVG from '$assets/DevicesIcon.svg?raw';
 
 	type NavItem = {
 		label: string;
-		icon?: string;
+		svg?: string;
 		active?: boolean;
 	};
 
 	const navItems: NavItem[] = [
-		{ label: 'Dashboard', active: true },
-		{ label: 'Devices' },
-		{ label: 'Accounts' },
-		{ label: 'Uploads' }
-	];
+    { label: 'Dashboard', svg: DashboardSVG, active: true },
+    { label: 'Devices', svg: DevicesSVG },
+    { label: 'Accounts' },
+    { label: 'Uploads', svg: DashboardSVG }
+  ];
 </script>
 
 <aside class="sidebar">
 	<div class="logo">
-		<Icon size={40} />
+		<ProjectIcon size={40} />
 		<div>
 			<strong>Argus</strong>
 			<small>Command & Control</small>
@@ -27,6 +30,9 @@
 	<nav>
 		{#each navItems as item}
 			<button class:item-active={item.active}>
+				{#if item.svg}
+					<Icon svg={item.svg} size={18} />
+				{/if}
 				{item.label}
 			</button>
 		{/each}
@@ -63,11 +69,11 @@
 			color: $text-muted;
 		}
 
-        strong {
-            color: white;
-            display: block;
-            font-size: x-large;
-        }
+		strong {
+			color: white;
+			display: block;
+			font-size: x-large;
+		}
 	}
 
 	nav {
