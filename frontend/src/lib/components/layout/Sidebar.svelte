@@ -19,7 +19,7 @@
 	<div class="logo">
 		<Icon size={40} />
 		<div>
-			<strong>C2 Control</strong>
+			<strong>Argus</strong>
 			<small>Command & Control</small>
 		</div>
 	</div>
@@ -62,6 +62,12 @@
 		small {
 			color: $text-muted;
 		}
+
+        strong {
+            color: white;
+            display: block;
+            font-size: x-large;
+        }
 	}
 
 	nav {
