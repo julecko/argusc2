@@ -2,15 +2,15 @@
 
 /* global styles */
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-:global(body) {
-  font-family: system-ui, sans-serif;
-  color: $text-primary;
-  margin: 0;
-  padding: 0;
-  background: #f5f5f5;
+body {
+    font-family: Tahoma, sans-serif;
+    color: $text-primary;
+    margin: 0;
+    padding: 0;
+    background: #f5f5f5;
 }

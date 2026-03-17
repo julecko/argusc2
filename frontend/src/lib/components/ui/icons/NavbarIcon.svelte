@@ -2,30 +2,21 @@
 	import UnknownIcon from "$assets/FilenotfoundIcon.svg?raw"
     export let size: number = 24;
 	export let color: string = 'currentColor';
-	export let svg: string = '';
+	export let svg: string = UnknownIcon;
 </script>
 
-{#if svg}
-	<div
-		class="nav-icon"
-		style="width: {size}px; height: {size}px; color: {color};"
-	>
-		{@html svg}
-	</div>
-{:else}
-	<div
-		class="nav-icon"
-		style="width: {size}px; height: {size}px; color: {color};"
-	>
-        {@html UnknownIcon}
-    </div>
-{/if}
+<div
+    class="nav-icon"
+    style="width: {size}px; height: {size}px; color: {color};"
+>
+    {@html svg}
+</div>
 
 <style>
 	.nav-icon {
         display: inline-block;
     }
-	.nav-icon svg {
+	.nav-icon :global(svg) {
 		width: 100%;
 		height: 100%;
 		stroke: currentColor;
