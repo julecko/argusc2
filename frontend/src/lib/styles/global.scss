@@ -1,9 +1,15 @@
 @use 'variables' as *;
 
 /* global styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 :global(body) {
   font-family: system-ui, sans-serif;
-  color: $font-color;
+  color: $text-primary;
   margin: 0;
   padding: 0;
   background: #f5f5f5;
