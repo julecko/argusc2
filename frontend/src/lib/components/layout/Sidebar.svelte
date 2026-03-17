@@ -227,7 +227,6 @@
             max-width $collapse-duration $collapse-ease,
             width $collapse-duration $collapse-ease,
             border $collapse-duration $collapse-ease,
-            background $collapse-duration $collapse-ease,
             color $collapse-duration $collapse-ease;
 
 		small {
