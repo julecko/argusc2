@@ -1,5 +1,8 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import '$lib/styles/global.scss';
+
+	import AppShell from '$lib/components/layout/AppShell.svelte';
 
 	let { children } = $props();
 </script>
@@ -8,8 +11,6 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{@render children?.()}
-
-<style lang="scss">
-    @use '@styles/global' as *;
-</style>
+<AppShell>
+	{@render children?.()}
+</AppShell>

@@ -13,10 +13,11 @@ const config = {
         }),
         alias: {
             // Custom aliases
-            '@lib': path.resolve('./src/lib'),
-            '@components': path.resolve('./src/lib/components'),
-            '@styles': path.resolve('./src/lib/styles'),
-            '@utils': path.resolve('./src/lib/utils')
+            '$lib': path.resolve('./src/lib'),
+            '$components': path.resolve('./src/lib/components'),
+            '$styles': path.resolve('./src/lib/styles'),
+            '$utils': path.resolve('./src/lib/utils'),
+            '$assets': path.resolve('./src/lib/assets')
         }
     }
 };
