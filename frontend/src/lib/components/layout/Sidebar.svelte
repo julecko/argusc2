@@ -7,24 +7,24 @@
 	import AccountsIcon from '$assets/AccountsIcon.svg?raw';
 	import UnknownIcon from '$assets/FilenotfoundIcon.svg?raw';
 
+    import { goto } from '$app/navigation';
+    import { page } from '$app/state';
+
 	type NavItem = {
 		label: string;
+        path: string;
 		svg?: string;
-		active: boolean;
 	};
 
 	let collapsed = false;
 
 	let navItems = [
-		{ label: 'Dashboard', svg: DashboardSVG, active: true },
-		{ label: 'Devices', svg: DevicesSVG, active: false },
-		{ label: 'Uploads', svg: UploadsIcon, active: false },
-		{ label: 'Accounts', svg: AccountsIcon, active: false }
-	] satisfies NavItem[];
+        { label: 'Dashboard', path: '/admin/dashboard', svg: DashboardSVG },
+        { label: 'Devices', path: '/admin/devices', svg: DevicesSVG },
+        { label: 'Uploads', path: '/admin/uploads', svg: UploadsIcon },
+        { label: 'Accounts', path: '/admin/accounts', svg: AccountsIcon }
+    ] satisfies NavItem[];
 
-	function setActive(index: number) {
-		navItems = navItems.map((item, i) => ({ ...item, active: i === index }));
-	}
 </script>
 
 <aside class="sidebar" class:collapsed>
@@ -38,7 +38,7 @@
 
 	<nav>
 		{#each navItems as item, i}
-			<button class:item-active={item.active} on:click={() => setActive(i)} title={item.label}>
+			<button class:item-active={page.url.pathname === item.path} on:click={() => goto(item.path)} title={item.label}>
 				<span class="nav-icon">
 					{#if item.svg}
 						<Icon svg={item.svg} size={39} />
