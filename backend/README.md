@@ -65,8 +65,3 @@ Run the application:
 Re-run migrations after adding new migration files:
 
     sqlx migrate run
-
-
-## License
-
-MIT
