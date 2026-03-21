@@ -30,11 +30,26 @@
 	async function handleSubmit() {
 		error = validate();
 		if (error) return;
-
 		loading = true;
-		await new Promise((r) => setTimeout(r, 700));
 
-		goto('/login');
+		try {
+			const res = await fetch('/api/auth/setup', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password, email })
+			});
+			const data = await res.json();
+			if (!res.ok) {
+				error = data.error ?? 'Setup failed.';
+				loading = false;
+				return;
+			}
+
+			goto('/login');
+		} catch {
+			error = 'Could not reach the server.';
+			loading = false;
+		}
 	}
 
 	$: strength = (() => {
@@ -75,7 +90,19 @@
 						placeholder="Choose an admin username"
 						bind:value={username}
 						disabled={loading}
-						on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
+                        on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
+					/>
+				</div>
+
+				<div class="field">
+					<label for="email">Email</label>
+					<input
+						id="email"
+						type="email"
+						placeholder="Enter your email"
+						bind:value={email}
+						disabled={loading}
+                        on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
 					/>
 				</div>
 
@@ -88,6 +115,7 @@
 							placeholder="Choose a strong password"
 							bind:value={password}
 							disabled={loading}
+                            on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
 						/>
 						<button
 							type="button"

@@ -4,19 +4,32 @@
 
 	let username = '';
 	let password = '';
-	let loading  = false;
-	let error    = '';
+	let loading = false;
+	let error = '';
 
 	async function handleSubmit() {
-		error   = '';
+		error = '';
 		loading = true;
 
-		await new Promise((r) => setTimeout(r, 600));
+		try {
+			const res = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password })
+			});
 
-		if (true) {
+			const data = await res.json();
+
+			if (!res.ok) {
+				error = data.error ?? 'Login failed.';
+				loading = false;
+				return;
+			}
+
+			document.cookie = `token=${data.token}; path=/; SameSite=Strict; httpOnly: true; secure: true`;
 			goto('/admin/dashboard');
-		} else {
-			error   = 'Invalid username or password.';
+		} catch {
+			error = 'Could not reach the server.';
 			loading = false;
 		}
 	}
@@ -24,10 +37,9 @@
 
 <div class="login-page">
 	<div class="login-center">
-
 		<div class="login-brand">
 			<div class="login-icon">
-				<ShieldIcon size={36} color="#ff0000"/>
+				<ShieldIcon size={36} color="#ff0000" />
 			</div>
 			<h1>C2 Control Panel</h1>
 			<p>Sign in to access the command center</p>
@@ -35,7 +47,6 @@
 
 		<div class="login-card">
 			<div class="login-fields">
-
 				{#if error}
 					<div class="login-error">{error}</div>
 				{/if}
@@ -78,7 +89,6 @@
 				</button>
 			</div>
 		</div>
-
 	</div>
 </div>
 
@@ -106,8 +116,14 @@
 	}
 
 	@keyframes fade-up {
-		from { opacity: 0; transform: translateY(16px); }
-		to   { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(16px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.login-brand {
@@ -191,11 +207,18 @@
 		width: 100%;
 		box-sizing: border-box;
 
-		&::placeholder { color: $text-muted; }
+		&::placeholder {
+			color: $text-muted;
+		}
 
-		&:focus { border-color: $accent; }
+		&:focus {
+			border-color: $accent;
+		}
 
-		&:disabled { opacity: 0.5; cursor: not-allowed; }
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
 	}
 
 	.login-btn {
@@ -212,14 +235,25 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		transition: opacity $transition, transform $transition;
+		transition:
+			opacity $transition,
+			transform $transition;
 		margin-top: 4px;
 
-		&:hover:not(:disabled) { opacity: 0.88; }
-		&:active:not(:disabled) { transform: scale(0.98); }
-		&:disabled { cursor: not-allowed; opacity: 0.7; }
+		&:hover:not(:disabled) {
+			opacity: 0.88;
+		}
+		&:active:not(:disabled) {
+			transform: scale(0.98);
+		}
+		&:disabled {
+			cursor: not-allowed;
+			opacity: 0.7;
+		}
 
-		&--loading { pointer-events: none; }
+		&--loading {
+			pointer-events: none;
+		}
 	}
 
 	.spinner {
@@ -232,6 +266,8 @@
 	}
 
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

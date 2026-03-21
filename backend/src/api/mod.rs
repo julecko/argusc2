@@ -1,10 +1,13 @@
 use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
 use uuid::Uuid;
-use crate::state::AppState;
+use crate::{auth::Claims, state::AppState};
+ 
+mod auth;
  
 pub fn router() -> Router<AppState> {
     Router::new()
+        .nest("/auth", auth::router())
         .route("/devices", get(get_devices))
 }
  
@@ -15,7 +18,7 @@ struct DeviceResponse {
     active: bool,
 }
 
-async fn get_devices(State(state): State<AppState>) -> Json<Vec<DeviceResponse>> {
+async fn get_devices(State(state): State<AppState>, _claims: Claims) -> Json<Vec<DeviceResponse>> {
     let devices = state.devices.read().await;
     let response = devices.values()
         .map(|d| DeviceResponse {
