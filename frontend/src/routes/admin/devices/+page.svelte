@@ -57,11 +57,15 @@
 	function handleAction(row: Row): void {
 		console.log('Action for', row.name);
 	}
+
+    function handleRow(row: Row): void {
+        console.log('Row for', row.name);
+    }
 </script>
 
 <section class="page">
 	<PageHeader title="Devices" description="Manage all devices communicating with c2 server" />
-	<DataTable {columns} {rows} statusKey="status" {statusColors}>
+	<DataTable {columns} {rows} statusKey="status" {statusColors} onRowClick={handleRow}>
 		<svelte:fragment slot="cell" let:col let:row let:value>
 			{#if col.key === 'uploads'}
 				<span class="uploads">
@@ -89,7 +93,7 @@
 		<svelte:fragment slot="actions" let:row>
 			<button
 				class="action-btn"
-				on:click={() => handleAction(row)}
+				on:click|stopPropagation={() => handleAction(row)}
 				aria-label="More options for {row.name}"
 			>
 				⋮
