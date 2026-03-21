@@ -47,8 +47,13 @@ Apply migrations using sqlx:
 
     sqlx migrate run
 
+### 4. Generate jws secret
+In `.env` edit JWS_SECRET to any random value, you can generate for example using this command.
 
-### 4. Start the server
+    openssl rand -hex 64
+
+
+### 5. Start the server
 
 Run the application:
 
