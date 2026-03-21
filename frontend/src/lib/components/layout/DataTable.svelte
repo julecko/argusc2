@@ -5,6 +5,7 @@
 	export let rows: Row[] = [];
 	export let statusKey: string = 'status';
 	export let statusColors: Record<string, BadgeVariant> = {};
+	export let onRowClick: ((row: Row) => void) | undefined = undefined;
 
 	function badgeVariant(status: unknown): BadgeVariant {
 		if (typeof status === 'string' && status in statusColors) {
@@ -36,7 +37,11 @@
 
 		<tbody>
 			{#each rows as row, i (i)}
-				<tr class="dt-row">
+				<tr
+					class="dt-row"
+					class:dt-row--clickable={onRowClick !== undefined}
+					on:click={() => onRowClick?.(row)}
+				>
 					{#each columns as col (col.key)}
 						<td>
 							{#if col.key === statusKey}
@@ -71,11 +76,11 @@
 </div>
 
 <style lang="scss">
-    @use '$styles/variables' as *;
+	@use '$styles/variables' as *;
 	$bg-surface: $bg-sidebar;
 	$bg-row-hover: #22222a;
-	$border-color: #2e2e38;
-    $text-dim: $text-primary;
+	$border-color: $border;
+	$text-dim: $text-primary;
 	$text-primary: #d4d4dc;
 	$text-muted: #6b6b7e;
 	$font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -152,6 +157,10 @@
 			&:hover {
 				background: $bg-row-hover;
 			}
+		}
+
+		.dt-row--clickable {
+			cursor: pointer;
 		}
 
 		td {
