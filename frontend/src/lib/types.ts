@@ -1,4 +1,4 @@
-export type BadgeVariant = 'green' | 'amber' | 'gray';
+export type BadgeVariant = 'green' | 'amber' | 'gray' | 'red' | 'blue';
 
 export interface Column {
     key: string;
