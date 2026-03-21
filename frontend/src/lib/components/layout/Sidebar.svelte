@@ -1,35 +1,41 @@
 <script lang="ts">
 	import ProjectIcon from '$components/ui/icons/ProjectIcon.svelte';
 	import Icon from '$components/ui/icons/NavbarIcon.svelte';
+	import UserMenu from '$components/ui/UserMenu.svelte';
 	import DashboardSVG from '$assets/DashboardIcon.svg?raw';
 	import DevicesSVG from '$assets/DevicesIcon.svg?raw';
 	import UploadsIcon from '$assets/UploadsIcon.svg?raw';
 	import AccountsIcon from '$assets/AccountsIcon.svg?raw';
 	import UnknownIcon from '$assets/FilenotfoundIcon.svg?raw';
 
-    import { goto } from '$app/navigation';
-    import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+
+	// Pass these in from +layout.svelte via data.username / data.email
+	export let username: string = 'Admin';
+	export let email: string = 'admin@c2server.local';
 
 	type NavItem = {
 		label: string;
-        path: string;
+		path: string;
 		svg?: string;
 	};
 
 	let collapsed = false;
 
 	let navItems = [
-        { label: 'Dashboard', path: '/admin/dashboard', svg: DashboardSVG },
-        { label: 'Devices', path: '/admin/devices', svg: DevicesSVG },
-        { label: 'Uploads', path: '/admin/uploads', svg: UploadsIcon },
-        { label: 'Accounts', path: '/admin/accounts', svg: AccountsIcon }
-    ] satisfies NavItem[];
-
+		{ label: 'Dashboard', path: '/admin/dashboard', svg: DashboardSVG },
+		{ label: 'Devices', path: '/admin/devices', svg: DevicesSVG },
+		{ label: 'Uploads', path: '/admin/uploads', svg: UploadsIcon },
+		{ label: 'Accounts', path: '/admin/accounts', svg: AccountsIcon }
+	] satisfies NavItem[];
 </script>
 
 <aside class="sidebar" class:collapsed>
-	<div class="logo" aria-label="Toggle sidebar">
-		<button class="logo-icon"  on:click={() => (collapsed = !collapsed)} ><ProjectIcon size={39} /></button>
+	<div class="logo">
+		<button class="logo-icon" on:click={() => (collapsed = !collapsed)}>
+			<ProjectIcon size={39} />
+		</button>
 		<span class="logo-text">
 			<h1>Argus</h1>
 			<small>Command & Control</small>
@@ -37,8 +43,12 @@
 	</div>
 
 	<nav>
-		{#each navItems as item, i}
-			<button class:item-active={page.url.pathname === item.path} on:click={() => goto(item.path)} title={item.label}>
+		{#each navItems as item}
+			<button
+				class:item-active={page.url.pathname === item.path}
+				on:click={() => goto(item.path)}
+				title={item.label}
+			>
 				<span class="nav-icon">
 					{#if item.svg}
 						<Icon svg={item.svg} size={39} />
@@ -51,13 +61,8 @@
 		{/each}
 	</nav>
 
-	<div class="user">
-		<div class="avatar">AD</div>
-		<span class="user-info">
-			<strong>Admin</strong>
-			<small>admin@c2server.local</small>
-		</span>
-	</div>
+	<!-- Replaced static .user block with the UserMenu component -->
+	<UserMenu {username} {email} {collapsed} />
 </aside>
 
 <style lang="scss">
@@ -76,13 +81,13 @@
 		flex-direction: column;
 		justify-content: space-between;
 		padding: 17px 12px;
-        gap: 17px;
+		gap: 17px;
 		border-right: 1px solid $border;
 		transition:
 			width $collapse-duration $collapse-ease,
 			min-width $collapse-duration $collapse-ease,
-            padding $collapse-duration $collapse-ease;
-		overflow: hidden;
+			padding $collapse-duration $collapse-ease;
+
 
 		&.collapsed {
 			width: $sidebar-collapsed;
@@ -100,10 +105,6 @@
 		border-radius: $radius;
 		color: $text-primary;
 		text-align: left;
-		transition:
-                max-width $collapse-duration $collapse-ease,
-                width $collapse-duration $collapse-ease,
-				color $collapse-duration $collapse-ease;
 	}
 
 	.logo-icon {
@@ -112,31 +113,28 @@
 		flex-shrink: 0;
 		width: 39px;
 		height: 39px;
-        cursor: pointer;
-        display: flex;
+		cursor: pointer;
 		background: transparent;
 		border: none;
 
-        &:hover :global(.icon) {
-            background-color: $second-accent-hover;
-        }
+		&:hover :global(.icon) {
+			background-color: $second-accent-hover;
+		}
 
-        :global(.icon) {
-            transition: background-color $collapse-duration $collapse-ease;
-        }
+		:global(.icon) {
+			transition: background-color $collapse-duration $collapse-ease;
+		}
 	}
 
 	.logo-text {
-        margin-left: 10px;
+		margin-left: 10px;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 		white-space: nowrap;
-        gap: 6px;
+		gap: 6px;
 		max-width: 180px;
-		opacity: 1;
-		transition:
-			max-width $collapse-duration $collapse-ease;
+		transition: max-width $collapse-duration $collapse-ease;
 
 		.collapsed & {
 			max-width: 0;
@@ -163,11 +161,11 @@
 		flex: 1;
 		flex-direction: column;
 		gap: 4px;
-        margin-left: -12px;
-        margin-right: -12px;
-        padding: 17px 12px;
-        border-top: 1px solid $border;
-        border-bottom: 1px solid $border;
+		margin-left: -12px;
+		margin-right: -12px;
+		padding: 17px 12px;
+		border-top: 1px solid $border;
+		border-bottom: 1px solid $border;
 
 		button {
 			display: flex;
@@ -180,8 +178,6 @@
 			border-radius: $radius;
 			cursor: pointer;
 			transition:
-                max-width $collapse-duration $collapse-ease,
-                width $collapse-duration $collapse-ease,
 				background-color $collapse-duration $collapse-ease,
 				color $collapse-duration $collapse-ease;
 
@@ -210,65 +206,8 @@
 		overflow: hidden;
 		font-size: medium;
 		max-width: 160px;
-        padding-left: 10px;
-		opacity: 1;
-		transition:
-			max-width $collapse-duration $collapse-ease;
-
-		.collapsed & {
-			max-width: 0;
-		}
-	}
-
-	.user {
-		display: flex;
-		align-items: center;
-        transition:
-            max-width $collapse-duration $collapse-ease,
-            width $collapse-duration $collapse-ease,
-            border $collapse-duration $collapse-ease,
-            color $collapse-duration $collapse-ease;
-
-		small {
-			color: $text-muted;
-		}
-
-		strong {
-			color: $text-primary;
-			display: block;
-			font-size: 13px;
-		}
-
-        .collapsed & {
-			width: 39;
-            height: 39;
-		}
-	}
-
-	.avatar {
-		background: $bg-card;
-		width: 39px;
-        height: 39px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 12px;
-		font-weight: 600;
-		flex-shrink: 0;
-		color: $text-primary;
-	}
-
-	.user-info {
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		white-space: nowrap;
-		max-width: 160px;
-        margin-left: 10px;
-		opacity: 1;
-		transition:
-			max-width $collapse-duration $collapse-ease;
+		padding-left: 10px;
+		transition: max-width $collapse-duration $collapse-ease;
 
 		.collapsed & {
 			max-width: 0;
