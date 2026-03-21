@@ -99,6 +99,14 @@
 	$badge-gray-text: #6b6b7e;
 	$badge-gray-ring: #2e2e3e;
 
+	$badge-red-bg: #2b0a0a;
+	$badge-red-text: #f87171;
+	$badge-red-ring: #7a1f1f;
+
+	$badge-blue-bg: #0a1628;
+	$badge-blue-text: #60a5fa;
+	$badge-blue-ring: #1e3a6e;
+
 	.dt-wrapper {
 		width: 100%;
 		overflow-x: auto;
@@ -215,6 +223,16 @@
 			background: $badge-gray-bg;
 			color: $badge-gray-text;
 			border-color: $badge-gray-ring;
+		}
+		&--red {
+			background: $badge-red-bg;
+			color: $badge-red-text;
+			border-color: $badge-red-ring;
+		}
+		&--blue {
+			background: $badge-blue-bg;
+			color: $badge-blue-text;
+			border-color: $badge-blue-ring;
 		}
 	}
 </style>
