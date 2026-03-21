@@ -35,15 +35,13 @@
 					bind:value={searchQuery}
 					on:keydown={(e) => e.key === 'Escape' && hide()}
 				/>
-				<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-				<kbd class="search-modal-esc" on:click={hide}>Esc</kbd>
 			</div>
 
 			{#if searchQuery.length === 0}
 				<div class="search-modal-hint">
 					<span>Start typing to search</span>
 					<span class="search-modal-tip">
-						<kbd>⌘K</kbd> to open · <kbd>Esc</kbd> to close
+						<kbd>Ctrl + k</kbd> to open · <kbd>Esc</kbd> to close
 					</span>
 				</div>
 			{/if}
@@ -121,23 +119,6 @@
 
 		&::placeholder {
 			color: $text-muted;
-		}
-	}
-
-	.search-modal-esc {
-		background: $bg-card;
-		border: 1px solid $border;
-		border-radius: 4px;
-		color: $text-muted;
-		font-size: 11px;
-		padding: 2px 7px;
-		cursor: pointer;
-		flex-shrink: 0;
-		font-family: monospace;
-
-		&:hover {
-			border-color: $accent;
-			color: $text-primary;
 		}
 	}
 
