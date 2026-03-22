@@ -29,3 +29,12 @@ export interface DataTableProps {
     statusKey?: string;
     statusColors?: Record<string, BadgeVariant>;
 }
+
+
+
+// ── ProgramCapabilities ────────────────────────────────────────────────────────────────
+export interface Capability {
+    id: string;
+    label: string;
+    desc: string;
+}
