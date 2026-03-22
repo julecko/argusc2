@@ -1,7 +1,7 @@
 <script lang="ts">
 	import IconSearch from '$components/ui/icons/SearchIcon.svelte';
 	import IconBell from '$components/ui/icons/BellIcon.svelte';
-	import SearchModal from '$lib/components/ui/SearchModal.svelte';
+	import SearchModal from '$lib/components/ui/modals/SearchModal.svelte';
 	import NotificationPanel from '$lib/components/ui/NotificationPanel.svelte';
 	import type { Notification } from '$lib/types';
 
