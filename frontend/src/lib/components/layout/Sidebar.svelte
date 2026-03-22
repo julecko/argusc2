@@ -7,6 +7,7 @@
 	import UploadsIcon from '$assets/UploadsIcon.svg?raw';
 	import AccountsIcon from '$assets/AccountsIcon.svg?raw';
 	import UnknownIcon from '$assets/FilenotfoundIcon.svg?raw';
+    import ProgramIcon from '$assets/ProgramIcon.svg?raw';
 
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -26,6 +27,7 @@
 	let navItems = [
 		{ label: 'Dashboard', path: '/admin/dashboard', svg: DashboardSVG },
 		{ label: 'Devices', path: '/admin/devices', svg: DevicesSVG },
+        { label: 'Programs', path: '/admin/programs', svg: ProgramIcon },
 		{ label: 'Uploads', path: '/admin/uploads', svg: UploadsIcon },
 		{ label: 'Accounts', path: '/admin/accounts', svg: AccountsIcon }
 	] satisfies NavItem[];
