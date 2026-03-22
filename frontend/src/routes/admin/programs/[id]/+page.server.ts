@@ -1,0 +1,64 @@
+import { error, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import type { Program } from '$lib/types';
+
+export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) => {
+    if (!locals.user) redirect(302, '/login');
+
+    const id = parseInt(params.id, 10);
+    const token = cookies.get('token');
+
+    if (isNaN(id)) error(400, 'Invalid program ID');
+
+    const res = await fetch(`/api/programs/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.status === 404) error(404, `Program not found`);
+    if (!res.ok) error(500, 'Failed to load program');
+
+    const program: Program = await res.json();
+    return { program };
+};
+
+export const actions: Actions = {
+    save: async ({ params, request, cookies, fetch, locals }) => {
+        if (!locals.user) redirect(302, '/login');
+
+        const token = cookies.get('token');
+        const data = await request.formData();
+
+        const body: Record<string, string | number> = {};
+
+        const name = data.get('name') as string | null;
+        const version = data.get('version') as string | null;
+        const os = data.get('os') as string | null;
+        const desc = data.get('description') as string | null;
+        const allowed = data.get('allowed_downloads') as string | null;
+        const ws_key = data.get('ws_key') as string | null;
+
+        if (name !== null) body.name = name;
+        if (version !== null) body.version = version;
+        if (os !== null) body.os = os;
+        if (desc !== null) body.description = desc;
+        if (allowed !== null) body.allowed_downloads = Number(allowed);
+        if (ws_key !== null) body.ws_key = ws_key;
+
+        const res = await fetch(`/api/programs/${params.id}`, {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            return { success: false, error: err.error ?? 'Failed to save changes' };
+        }
+
+        const updated: Program = await res.json();
+        return { success: true, program: updated };
+    },
+};

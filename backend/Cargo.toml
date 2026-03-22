@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.8.8", features = ["ws", "macros"] }
+axum = { version = "0.8.8", features = ["ws", "macros", "multipart"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tower-http = { version = "0.6.8", features = ["fs"] }
@@ -19,3 +19,4 @@ dotenvy = "0.15.7"
 argon2 = "0.5.3"
 jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
 axum-extra = { version = "0.12.5", features = ["typed-header"] }
+sha2 = "0.10.9"
