@@ -66,28 +66,35 @@
 <NotificationPanel bind:open={notifOpen} bind:notifications />
 
 <div class="page-header">
-	<div class="page-header-left">
-		<h1>{title}</h1>
-		<p>{description}</p>
+	<div class="page-header-top">
+		<div class="page-header-left">
+			<h1>{title}</h1>
+			<p>{description}</p>
+		</div>
+
+		<div class="page-header-right">
+			<button class="icon-btn" on:click={() => searchModal.show()} aria-label="Search">
+				<IconSearch size={16} />
+			</button>
+			<button
+				class="icon-btn"
+				class:icon-btn--active={notifOpen}
+				on:click={() => (notifOpen = !notifOpen)}
+				aria-label="Notifications"
+			>
+				<IconBell size={16} />
+				{#if unreadCount > 0}
+					<span class="notif-badge">{unreadCount}</span>
+				{/if}
+			</button>
+		</div>
 	</div>
 
-	<div class="page-header-right">
-		<button class="icon-btn" on:click={() => searchModal.show()} aria-label="Search">
-			<IconSearch size={16} />
-		</button>
-
-		<button
-			class="icon-btn"
-			class:icon-btn--active={notifOpen}
-			on:click={() => (notifOpen = !notifOpen)}
-			aria-label="Notifications"
-		>
-			<IconBell size={16} />
-			{#if unreadCount > 0}
-				<span class="notif-badge">{unreadCount}</span>
-			{/if}
-		</button>
-	</div>
+	{#if $$slots.actions}
+		<div class="page-header-actions">
+			<slot name="actions" />
+		</div>
+	{/if}
 </div>
 
 <style lang="scss">
@@ -95,9 +102,22 @@
 
 	.page-header {
 		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.page-header-top {
+		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
 		gap: 24px;
+	}
+
+	.page-header-actions {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 8px;
 	}
 
 	.page-header-left {

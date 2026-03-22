@@ -27,7 +27,7 @@ async function verifyToken(token: string): Promise<string | null> {
     });
 
     if (!res.ok) {
-        return null; // invalid token is not a system error
+        return null;
     }
 
     const data = await res.json();
