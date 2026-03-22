@@ -4,10 +4,12 @@ use uuid::Uuid;
 use crate::{auth::Claims, state::AppState};
  
 mod auth;
+mod programs;
  
 pub fn router() -> Router<AppState> {
     Router::new()
         .nest("/auth", auth::router())
+        .nest("/programs", programs::router())
         .route("/devices", get(get_devices))
 }
  
