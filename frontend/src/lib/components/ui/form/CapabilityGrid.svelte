@@ -2,9 +2,9 @@
 	import type { Capability } from "$lib/types";
 
 	export let options: Capability[] = [];
-	export let selected: Set<string> = new Set();
+	export let selected: Set<number> = new Set();
 
-	function toggle(id: string) {
+	function toggle(id: number) {
 		if (selected.has(id)) {
 			selected.delete(id);
 		} else {
@@ -40,7 +40,7 @@
 			</div>
 			<div class="capability-text">
 				<span class="capability-label">{cap.label}</span>
-				<span class="capability-desc">{cap.desc}</span>
+				<span class="capability-desc">{cap.description}</span>
 			</div>
 		</div>
 	{/each}
@@ -63,6 +63,8 @@
 		display: flex;
 		align-items: flex-start;
 		gap: 10px;
+        border: 1px solid black;
+        border-collapse: collapse;
 		padding: 10px;
 		border-radius: 6px;
 		cursor: pointer;

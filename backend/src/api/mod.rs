@@ -5,11 +5,15 @@ use crate::{auth::Claims, state::AppState};
  
 mod auth;
 mod programs;
+mod program_types;
+mod capabilities;
  
 pub fn router() -> Router<AppState> {
     Router::new()
         .nest("/auth", auth::router())
         .nest("/programs", programs::router())
+        .nest("/capabilities", capabilities::router())
+        .nest("/program-types", program_types::router())
         .route("/devices", get(get_devices))
 }
  
