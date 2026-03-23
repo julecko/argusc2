@@ -8,7 +8,7 @@ CREATE TABLE programs (
     os                ENUM('windows', 'linux', 'android', 'mac') NOT NULL,
     storage_path      VARCHAR(512)                               NOT NULL,
     filesize          BIGINT                                     NOT NULL, -- in bytes
-    file_hash         CHAR(64)                                   NOT NULL, -- e.g., SHA-256
+    file_hash         CHAR(64)                                   NOT NULL UNIQUE, -- e.g., SHA-256
     ws_key            CHAR(64)                                   NOT NULL UNIQUE, -- e.g., SHA-256
     description       TEXT                                       NULL,
     downloads         INT                                        NOT NULL DEFAULT 0,
