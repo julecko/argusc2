@@ -2,31 +2,43 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
-	import SelectInput from '$lib/components/ui/form/SelectInput.svelte';
-	import type { Program, ProgramOS } from '$lib/types';
+	import type { ProgramDetail, ProgramType, Capability, ProgramOS } from '$lib/types';
 
-	export let data: { program: Program };
-	export let form: { success?: boolean; error?: string; program?: Program } | null = null;
+	export let data: {
+		program: ProgramDetail;
+		programTypes: ProgramType[];
+		capabilities: Capability[];
+	};
+	export let form: { success?: boolean; error?: string; program?: ProgramDetail } | null = null;
 
 	let editing = false;
 	let saved = false;
 	let draft = { ...data.program };
+	let draftCaps: Set<number> = new Set(data.program.capabilities.map((c) => c.id));
 
 	function startEdit() {
 		draft = { ...data.program };
+		draftCaps = new Set(data.program.capabilities.map((c) => c.id));
 		editing = true;
 		saved = false;
 	}
 
 	function cancelEdit() {
 		draft = { ...data.program };
+		draftCaps = new Set(data.program.capabilities.map((c) => c.id));
 		editing = false;
 	}
 
-	// When save succeeds update the live data with what the server returned
+	function toggleCap(id: number) {
+		if (draftCaps.has(id)) draftCaps.delete(id);
+		else draftCaps.add(id);
+		draftCaps = new Set(draftCaps);
+	}
+
 	$: if (form?.success && form.program) {
 		data.program = { ...form.program };
 		draft = { ...form.program };
+		draftCaps = new Set(form.program.capabilities.map((c) => c.id));
 		editing = false;
 		saved = true;
 	}
@@ -49,7 +61,13 @@
 		});
 	}
 
-	const osList: string[] = ['windows', 'linux', 'android', 'mac'];
+	function downloadsLabel(allowed: number): string {
+		if (allowed === -1) return '∞ unlimited';
+		if (allowed === 0) return '⛔ forbidden';
+		return String(allowed);
+	}
+
+	const osList = ['windows', 'linux', 'android', 'mac'];
 
 	const osLabels: Record<ProgramOS, string> = {
 		windows: 'Windows',
@@ -60,10 +78,9 @@
 
 	$: typeColor = data.program.type_color ?? '#6b6b7e';
 	$: typeName = data.program.type_name ?? 'Unknown';
-	$: downloads =
-		data.program.allowed_downloads === 0
-			? `${data.program.downloads} / ∞`
-			: `${data.program.downloads} / ${data.program.allowed_downloads}`;
+	$: downloads = `${data.program.downloads} / ${downloadsLabel(data.program.allowed_downloads)}`;
+
+	$: selectedType = data.programTypes.find((t) => t.id === draft.type_id);
 </script>
 
 <section class="page">
@@ -102,6 +119,13 @@
 	{/if}
 
 	<form id="edit-form" method="POST" action="?/save" use:enhance>
+		<!-- Hidden inputs for capabilities -->
+		{#if editing}
+			{#each [...draftCaps] as capId}
+				<input type="hidden" name="capability_ids[]" value={capId} />
+			{/each}
+		{/if}
+
 		<div class="grid">
 			<!-- ── Left column ── -->
 			<div class="col">
@@ -132,25 +156,128 @@
 							{/if}
 						</div>
 
+						<!-- Type — editable with color preview -->
 						<div class="field">
 							<span class="field-label">Type</span>
-							<span
-								class="type-badge"
-								style="color:{typeColor}; background:{typeColor}1a; border-color:{typeColor}40;"
-								>{typeName}</span
-							>
+							{#if editing}
+								<div class="field-right">
+									<div class="select-wrap-sm">
+										<select name="type_id" class="field-select" bind:value={draft.type_id}>
+											{#each data.programTypes as t}
+												<option value={t.id}>{t.name}</option>
+											{/each}
+										</select>
+										<svg
+											class="chevron"
+											width="10"
+											height="10"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<polyline points="6 9 12 15 18 9" />
+										</svg>
+									</div>
+									{#if selectedType}
+										<span
+											class="type-preview"
+											style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
+										>
+											{selectedType.name}
+										</span>
+									{/if}
+								</div>
+							{:else}
+								<span
+									class="type-badge"
+									style="color:{typeColor}; background:{typeColor}1a; border-color:{typeColor}40;"
+								>
+									{typeName}
+								</span>
+							{/if}
 						</div>
 
+						<!-- OS -->
 						<div class="field">
 							<span class="field-label">Operating System</span>
 							{#if editing}
-								<div class="field-input-wrap">
-									<SelectInput bind:value={draft.os} options={osList} />
+								<div class="select-wrap-sm">
+									<select name="os" class="field-select" bind:value={draft.os}>
+										{#each osList as o}
+											<option value={o}>{osLabels[o as ProgramOS]}</option>
+										{/each}
+									</select>
+									<svg
+										class="chevron"
+										width="10"
+										height="10"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<polyline points="6 9 12 15 18 9" />
+									</svg>
 								</div>
 							{:else}
 								<span class="field-value">{osLabels[data.program.os]}</span>
 							{/if}
 						</div>
+					</div>
+				</div>
+
+				<!-- Capabilities -->
+				<div class="card">
+					<div class="card-header"><span class="card-title">Capabilities</span></div>
+					<div class="card-body">
+						{#if editing}
+							<div class="cap-grid">
+								{#each data.capabilities as cap}
+									<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+									<div
+										class="cap-item"
+										class:cap-item--checked={draftCaps.has(cap.id)}
+										on:click={() => toggleCap(cap.id)}
+									>
+										<div class="checkbox" class:checkbox--checked={draftCaps.has(cap.id)}>
+											{#if draftCaps.has(cap.id)}
+												<svg
+													width="10"
+													height="10"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="3"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												>
+													<polyline points="20 6 9 17 4 12" />
+												</svg>
+											{/if}
+										</div>
+										<div class="cap-text">
+											<span class="cap-label">{cap.label}</span>
+											{#if cap.description}
+												<span class="cap-desc">{cap.description}</span>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else if data.program.capabilities.length > 0}
+							<div class="cap-tags">
+								{#each data.program.capabilities as cap}
+									<span class="cap-tag">{cap.name}</span>
+								{/each}
+							</div>
+						{:else}
+							<p class="muted-text">No capabilities assigned.</p>
+						{/if}
 					</div>
 				</div>
 
@@ -196,13 +323,11 @@
 										type="number"
 										bind:value={draft.allowed_downloads}
 									/>
-									<span class="field-hint">0 = unlimited</span>
+									<span class="field-hint">-1 = unlimited · 0 = forbidden</span>
 								</div>
 							{:else}
-								<span class="field-value">
-									{data.program.allowed_downloads === 0
-										? '∞ unlimited'
-										: data.program.allowed_downloads}
+								<span class="field-value" class:forbidden={data.program.allowed_downloads === 0}>
+									{downloadsLabel(data.program.allowed_downloads)}
 								</span>
 							{/if}
 						</div>
@@ -288,7 +413,6 @@
 			opacity $transition,
 			background $transition,
 			border-color $transition;
-
 		&--primary {
 			background: $accent;
 			color: white;
@@ -334,7 +458,6 @@
 		gap: 20px;
 		align-items: start;
 	}
-
 	.col {
 		display: flex;
 		flex-direction: column;
@@ -375,7 +498,6 @@
 		justify-content: space-between;
 		gap: 12px;
 		min-height: 28px;
-
 		&--stack {
 			flex-direction: column;
 			align-items: flex-start;
@@ -393,9 +515,8 @@
 		font-size: 13px;
 		color: $text-primary;
 		text-align: right;
-
 		&.mono {
-			font-family: 'JetBrains Mono', 'Fira Code', monospace;
+			font-family: 'JetBrains Mono', monospace;
 			font-size: 12px;
 		}
 		&.muted {
@@ -404,6 +525,9 @@
 		&.accent {
 			color: $accent;
 			font-weight: 600;
+		}
+		&.forbidden {
+			color: #f87171;
 		}
 	}
 
@@ -419,7 +543,6 @@
 		width: 200px;
 		box-sizing: border-box;
 		transition: border-color $transition;
-
 		&:focus {
 			border-color: $accent;
 		}
@@ -431,17 +554,12 @@
 		}
 	}
 
-	.field-input-wrap {
-		width: 200px;
-	}
-
 	.field-right {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
 		gap: 4px;
 	}
-
 	.field-hint {
 		font-size: 11px;
 		color: $text-muted;
@@ -460,7 +578,6 @@
 		font-family: inherit;
 		box-sizing: border-box;
 		transition: border-color $transition;
-
 		&::placeholder {
 			color: $text-muted;
 		}
@@ -469,20 +586,40 @@
 		}
 	}
 
-	.hash {
-		word-break: break-all;
-		color: $text-muted;
-		font-size: 11px;
-		line-height: 1.5;
+	.select-wrap-sm {
+		position: relative;
 	}
 
-	.description-text {
-		margin: 0;
+	.field-select {
+		appearance: none;
+		-webkit-appearance: none;
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: 6px;
+		padding: 6px 26px 6px 10px;
 		font-size: 13px;
-		color: $text-muted;
-		line-height: 1.6;
+		color: $text-primary;
+		outline: none;
+		cursor: pointer;
+		transition: border-color $transition;
+		&:focus {
+			border-color: $accent;
+		}
+		option {
+			background: $bg-sidebar;
+		}
 	}
 
+	.chevron {
+		position: absolute;
+		right: 8px;
+		top: 50%;
+		transform: translateY(-50%);
+		color: $text-muted;
+		pointer-events: none;
+	}
+
+	.type-preview,
 	.type-badge {
 		display: inline-flex;
 		align-items: center;
@@ -492,5 +629,102 @@
 		font-weight: 600;
 		letter-spacing: 0.04em;
 		border: 1px solid transparent;
+	}
+
+	.cap-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4px;
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: $radius;
+		padding: 8px;
+	}
+
+	.cap-item {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 10px;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: background $transition;
+		&:hover {
+			background: rgba(255, 255, 255, 0.04);
+		}
+		&--checked {
+			background: rgba($accent, 0.05);
+		}
+	}
+
+	.checkbox {
+		width: 16px;
+		height: 16px;
+		border-radius: 4px;
+		border: 1px solid $border;
+		background: $bg-main;
+		flex-shrink: 0;
+		margin-top: 1px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition:
+			background $transition,
+			border-color $transition;
+		&--checked {
+			background: $accent;
+			border-color: $accent;
+			color: white;
+		}
+	}
+
+	.cap-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.cap-label {
+		font-size: 13px;
+		font-weight: 500;
+		color: $text-primary;
+		line-height: 1.2;
+	}
+	.cap-desc {
+		font-size: 11px;
+		color: $accent;
+		line-height: 1.3;
+	}
+
+	.cap-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.cap-tag {
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: 20px;
+		padding: 3px 10px;
+		font-size: 11px;
+		color: $text-muted;
+	}
+
+	.hash {
+		word-break: break-all;
+		color: $text-muted;
+		font-size: 11px;
+		line-height: 1.5;
+	}
+	.description-text {
+		margin: 0;
+		font-size: 13px;
+		color: $text-muted;
+		line-height: 1.6;
+	}
+	.muted-text {
+		margin: 0;
+		font-size: 13px;
+		color: $text-muted;
 	}
 </style>
