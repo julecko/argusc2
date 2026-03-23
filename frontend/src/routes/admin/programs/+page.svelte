@@ -5,6 +5,7 @@
 	import DataTable from '$components/layout/DataTable.svelte';
 	import UploadProgramModal from '$lib/components/ui/modals/UploadProgramModal.svelte';
 	import type { Column, Row, Program } from '$lib/types';
+	import { downloadsDisplay, formatBytes, formatDate } from '$lib/utils/programs';
 
 	export let data: { programs: Program[] };
 	export let form: { success?: boolean; error?: string } | null = null;
@@ -22,26 +23,9 @@
 	$: rows = data.programs.map((p) => ({
 		...p,
 		downloads:
-			p.allowed_downloads === 0 ? `${p.downloads} / ∞` : `${p.downloads} / ${p.allowed_downloads}`,
+			downloadsDisplay(p.downloads, p.allowed_downloads),
 		filesize: formatBytes(p.filesize)
 	})) as Row[];
-
-	function formatBytes(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(2)} KB`;
-		if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
-		return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
-	}
-
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	}
 
 	let openMenuId: number | null = null;
 

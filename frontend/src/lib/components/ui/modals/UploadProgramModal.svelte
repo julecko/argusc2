@@ -248,7 +248,7 @@
 				Allowed Downloads
 				<span class="form-hint">(-1 = unlimited · 0 = forbidden · &gt;0 = fixed limit)</span>
 			</label>
-			<input id="prog-dl" class="form-input" type="number" bind:value={allowedDownloads} />
+			<input id="prog-dl" class="form-input" min="-1" type="number" bind:value={allowedDownloads} />
 		</div>
 
 		<!-- WebSocket key -->
@@ -501,6 +501,7 @@
 		padding: 10px;
 		border-radius: 6px;
 		cursor: pointer;
+        border: 1px solid $border;
 		transition: background $transition;
 		&:hover {
 			background: rgba(255, 255, 255, 0.04);
