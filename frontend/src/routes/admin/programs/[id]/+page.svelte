@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
+	import DownloadCommands from '$components/ui/DownloadCommands.svelte';
 	import type { ProgramDetail, ProgramType, Capability, ProgramOS } from '$lib/types';
+	import { formatBytes, formatDate, downloadsDisplay } from '$lib/utils/programs';
 
 	export let data: {
 		program: ProgramDetail;
@@ -35,30 +38,18 @@
 		draftCaps = new Set(draftCaps);
 	}
 
+	let savedTimer: ReturnType<typeof setTimeout>;
+
 	$: if (form?.success && form.program) {
 		data.program = { ...form.program };
 		draft = { ...form.program };
 		draftCaps = new Set(form.program.capabilities.map((c) => c.id));
 		editing = false;
 		saved = true;
-	}
-
-	// ── Helpers ───────────────────────────────────────────────
-	function formatBytes(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(2)} KB`;
-		if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
-		return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
-	}
-
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+		clearTimeout(savedTimer);
+		savedTimer = setTimeout(() => {
+			saved = false;
+		}, 3000);
 	}
 
 	function downloadsLabel(allowed: number): string {
@@ -78,8 +69,7 @@
 
 	$: typeColor = data.program.type_color ?? '#6b6b7e';
 	$: typeName = data.program.type_name ?? 'Unknown';
-	$: downloads = `${data.program.downloads} / ${downloadsLabel(data.program.allowed_downloads)}`;
-
+	$: downloads = downloadsDisplay(data.program.downloads, data.program.allowed_downloads);
 	$: selectedType = data.programTypes.find((t) => t.id === draft.type_id);
 </script>
 
@@ -97,7 +87,7 @@
 	</PageHeader>
 
 	{#if saved}
-		<div class="save-banner">
+		<div class="save-banner" transition:fade={{ duration: 400 }}>
 			<svg
 				width="14"
 				height="14"
@@ -181,21 +171,13 @@
 											<polyline points="6 9 12 15 18 9" />
 										</svg>
 									</div>
-									{#if selectedType}
-										<span
-											class="type-preview"
-											style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
-										>
-											{selectedType.name}
-										</span>
-									{/if}
 								</div>
-							{:else}
+							{:else if selectedType}
 								<span
-									class="type-badge"
-									style="color:{typeColor}; background:{typeColor}1a; border-color:{typeColor}40;"
+									class="type-preview"
+									style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
 								>
-									{typeName}
+									{selectedType.name}
 								</span>
 							{/if}
 						</div>
@@ -300,6 +282,14 @@
 						{/if}
 					</div>
 				</div>
+
+				<!-- Download Commands -->
+				<div class="card">
+					<div class="card-header"><span class="card-title">Download Commands</span></div>
+					<div class="card-body">
+						<DownloadCommands filename={data.program.name} id={data.program.id} />
+					</div>
+				</div>
 			</div>
 
 			<!-- ── Right column ── -->
@@ -321,6 +311,7 @@
 										name="allowed_downloads"
 										class="field-input"
 										type="number"
+										min="-1"
 										bind:value={draft.allowed_downloads}
 									/>
 									<span class="field-hint">-1 = unlimited · 0 = forbidden</span>
@@ -619,8 +610,7 @@
 		pointer-events: none;
 	}
 
-	.type-preview,
-	.type-badge {
+	.type-preview {
 		display: inline-flex;
 		align-items: center;
 		padding: 3px 10px;
@@ -647,6 +637,7 @@
 		gap: 10px;
 		padding: 10px;
 		border-radius: 6px;
+		border: 1px solid $border;
 		cursor: pointer;
 		transition: background $transition;
 		&:hover {
