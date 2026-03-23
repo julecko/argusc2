@@ -43,7 +43,7 @@ export interface ProgramType {
 
 export interface Capability {
     id: number;
-    label: string;
+    name: string;
     description: string;
 }
 

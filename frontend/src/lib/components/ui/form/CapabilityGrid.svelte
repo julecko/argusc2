@@ -1,15 +1,12 @@
 <script lang="ts">
-	import type { Capability } from "$lib/types";
+	import type { Capability } from '$lib/types';
 
 	export let options: Capability[] = [];
 	export let selected: Set<number> = new Set();
 
 	function toggle(id: number) {
-		if (selected.has(id)) {
-			selected.delete(id);
-		} else {
-			selected.add(id);
-		}
+		if (selected.has(id)) selected.delete(id);
+		else selected.add(id);
 		selected = new Set(selected);
 	}
 </script>
@@ -39,8 +36,10 @@
 				{/if}
 			</div>
 			<div class="capability-text">
-				<span class="capability-label">{cap.label}</span>
-				<span class="capability-desc">{cap.description}</span>
+				<span class="capability-label">{cap.name}</span>
+				{#if cap.description}
+					<span class="capability-desc">{cap.description}</span>
+				{/if}
 			</div>
 		</div>
 	{/each}
@@ -63,8 +62,7 @@
 		display: flex;
 		align-items: flex-start;
 		gap: 10px;
-        border: 1px solid black;
-        border-collapse: collapse;
+		border: 1px solid $border;
 		padding: 10px;
 		border-radius: 6px;
 		cursor: pointer;
