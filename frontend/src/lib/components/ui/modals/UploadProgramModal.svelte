@@ -4,12 +4,14 @@
 	import FormRow from '$components/ui/form/FormRow.svelte';
 	import SelectInput from '$components/ui/form/SelectInput.svelte';
 	import FileDropzone from '$components/ui/form/FileDropzone.svelte';
+	import CapabilityGrid from '$components/ui/form/CapabilityGrid.svelte';
 	import UploadIcon from '$components/ui/icons/UploadIcon.svelte';
 	import type { ProgramType, Capability, ProgramDetail } from '$lib/types';
 
 	export let open: boolean = false;
 	export let onSuccess: ((program: ProgramDetail) => void) | undefined = undefined;
 
+	// ── Remote data ───────────────────────────────────────────
 	let programTypes: ProgramType[] = [];
 	let capabilities: Capability[] = [];
 	let loadingMeta = false;
@@ -21,12 +23,10 @@
 		try {
 			const token = getToken();
 			const headers = { Authorization: `Bearer ${token}` };
-
 			const [typesRes, capsRes] = await Promise.all([
 				fetch('/api/program-types/all', { headers }),
 				fetch('/api/capabilities/all', { headers })
 			]);
-
 			if (typesRes.ok) programTypes = await typesRes.json();
 			if (capsRes.ok) capabilities = await capsRes.json();
 		} catch {
@@ -35,7 +35,6 @@
 		loadingMeta = false;
 	}
 
-	// Load when modal opens
 	$: if (open && programTypes.length === 0) loadMeta();
 
 	// ── Form state ────────────────────────────────────────────
@@ -62,12 +61,6 @@
 				.find((c) => c.startsWith('token='))
 				?.split('=')[1] ?? ''
 		);
-	}
-
-	function toggleCap(id: number) {
-		if (selectedCaps.has(id)) selectedCaps.delete(id);
-		else selectedCaps.add(id);
-		selectedCaps = new Set(selectedCaps);
 	}
 
 	function handleFileChange(e: CustomEvent<File>) {
@@ -109,9 +102,7 @@
 			fd.append('allowed_downloads', String(allowedDownloads));
 			fd.append('description', description);
 			fd.append('ws_key', wsKey.trim());
-			for (const id of selectedCaps) {
-				fd.append('capabilities[]', String(id));
-			}
+			for (const id of selectedCaps) fd.append('capabilities[]', String(id));
 
 			const res = await fetch('/api/programs', {
 				method: 'POST',
@@ -134,6 +125,7 @@
 		}
 	}
 
+	// ── Reset ─────────────────────────────────────────────────
 	function close() {
 		open = false;
 		file = null;
@@ -151,9 +143,6 @@
 	}
 
 	$: if (!open) close();
-
-	$: typeOptions = programTypes.map((t) => t.id.toString());
-	$: typeLabels = Object.fromEntries(programTypes.map((t) => [t.id.toString(), t.name]));
 </script>
 
 <Modal bind:open title="Upload New Program">
@@ -161,7 +150,6 @@
 		{#if error}
 			<div class="form-error">{error}</div>
 		{/if}
-
 		{#if metaError}
 			<div class="form-error">{metaError}</div>
 		{/if}
@@ -192,6 +180,7 @@
 		</FormRow>
 
 		<FormRow>
+			<!-- Type with color preview -->
 			<div class="form-field">
 				<label class="form-label" for="prog-type">
 					Program Type <span class="required">*</span>
@@ -200,9 +189,7 @@
 					<select id="prog-type" class="form-select" bind:value={typeId}>
 						<option value="" disabled selected>Select type…</option>
 						{#each programTypes as t}
-							<option value={String(t.id)}>
-								{t.name}
-							</option>
+							<option value={String(t.id)}>{t.name}</option>
 						{/each}
 					</select>
 					<svg
@@ -219,7 +206,6 @@
 						<polyline points="6 9 12 15 18 9" />
 					</svg>
 				</div>
-				<!-- Color preview for selected type -->
 				{#if typeId}
 					{@const selected = programTypes.find((t) => String(t.id) === typeId)}
 					{#if selected}
@@ -242,13 +228,21 @@
 			/>
 		</FormRow>
 
-		<!-- Allowed downloads — -1 = unlimited, 0 = forbidden -->
 		<div class="form-field">
 			<label class="form-label" for="prog-dl">
 				Allowed Downloads
 				<span class="form-hint">(-1 = unlimited · 0 = forbidden · &gt;0 = fixed limit)</span>
 			</label>
-			<input id="prog-dl" class="form-input" min="-1" type="number" bind:value={allowedDownloads} />
+			<input
+				id="prog-dl"
+				class="form-input"
+				min="-1"
+				type="number"
+				bind:value={allowedDownloads}
+				on:input={() => {
+					if (allowedDownloads < -1) allowedDownloads = -1;
+				}}
+			/>
 		</div>
 
 		<!-- WebSocket key -->
@@ -270,49 +264,17 @@
 				<button type="button" class="generate-btn" on:click={generateWsKey}>Generate</button>
 			</div>
 			{#if wsKey}
-				<span class="wskey-len" class:ok={wsKey.length === 64} class:bad={wsKey.length !== 64}
-					>{wsKey.length} / 64</span
-				>
+				<span class="wskey-len" class:ok={wsKey.length === 64} class:bad={wsKey.length !== 64}>
+					{wsKey.length} / 64
+				</span>
 			{/if}
 		</div>
 
-		<!-- Capabilities from DB -->
+		<!-- Capabilities — shared component -->
 		{#if capabilities.length > 0}
 			<div class="form-field">
 				<span class="form-label">Capabilities</span>
-				<div class="cap-grid">
-					{#each capabilities as cap}
-						<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-						<div
-							class="cap-item"
-							class:cap-item--checked={selectedCaps.has(cap.id)}
-							on:click={() => toggleCap(cap.id)}
-						>
-							<div class="checkbox" class:checkbox--checked={selectedCaps.has(cap.id)}>
-								{#if selectedCaps.has(cap.id)}
-									<svg
-										width="10"
-										height="10"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="3"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-									>
-										<polyline points="20 6 9 17 4 12" />
-									</svg>
-								{/if}
-							</div>
-							<div class="cap-text">
-								<span class="cap-label">{cap.label}</span>
-								{#if cap.description}
-									<span class="cap-desc">{cap.description}</span>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
+				<CapabilityGrid options={capabilities} bind:selected={selectedCaps} />
 			</div>
 		{/if}
 
@@ -394,7 +356,6 @@
 		font-family: inherit;
 	}
 
-	// ── Type select ───────────────────────────────────────────
 	.select-wrap {
 		position: relative;
 	}
@@ -441,7 +402,6 @@
 		align-self: flex-start;
 	}
 
-	// ── WS key ────────────────────────────────────────────────
 	.wskey-row {
 		display: flex;
 		gap: 8px;
@@ -481,72 +441,6 @@
 		&.bad {
 			color: #f5a623;
 		}
-	}
-
-	// ── Capabilities ──────────────────────────────────────────
-	.cap-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 4px;
-		background: $bg-card;
-		border: 1px solid $border;
-		border-radius: $radius;
-		padding: 8px;
-	}
-
-	.cap-item {
-		display: flex;
-		align-items: flex-start;
-		gap: 10px;
-		padding: 10px;
-		border-radius: 6px;
-		cursor: pointer;
-        border: 1px solid $border;
-		transition: background $transition;
-		&:hover {
-			background: rgba(255, 255, 255, 0.04);
-		}
-		&--checked {
-			background: rgba($accent, 0.05);
-		}
-	}
-
-	.checkbox {
-		width: 16px;
-		height: 16px;
-		border-radius: 4px;
-		border: 1px solid $border;
-		background: $bg-main;
-		flex-shrink: 0;
-		margin-top: 1px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition:
-			background $transition,
-			border-color $transition;
-		&--checked {
-			background: $accent;
-			border-color: $accent;
-			color: white;
-		}
-	}
-
-	.cap-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.cap-label {
-		font-size: 13px;
-		font-weight: 500;
-		color: $text-primary;
-		line-height: 1.2;
-	}
-	.cap-desc {
-		font-size: 11px;
-		color: $accent;
-		line-height: 1.3;
 	}
 
 	.form-error {

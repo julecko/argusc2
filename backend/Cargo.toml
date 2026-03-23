@@ -21,3 +21,4 @@ jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
 axum-extra = { version = "0.12.5", features = ["typed-header"] }
 sha2 = "0.10.9"
 tokio-util = { version = "0.7.18", features = ["io"] }
+tower_governor = "0.8.0"

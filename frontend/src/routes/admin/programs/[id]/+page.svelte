@@ -3,9 +3,10 @@
 	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
+	import CapabilityGrid from '$components/ui/form/CapabilityGrid.svelte';
 	import DownloadCommands from '$components/ui/DownloadCommands.svelte';
+	import { downloadsDisplay, formatBytes, formatDate } from '$lib/utils/programs';
 	import type { ProgramDetail, ProgramType, Capability, ProgramOS } from '$lib/types';
-	import { formatBytes, formatDate, downloadsDisplay } from '$lib/utils/programs';
 
 	export let data: {
 		program: ProgramDetail;
@@ -18,6 +19,8 @@
 	let saved = false;
 	let draft = { ...data.program };
 	let draftCaps: Set<number> = new Set(data.program.capabilities.map((c) => c.id));
+
+	let savedTimer: ReturnType<typeof setTimeout>;
 
 	function startEdit() {
 		draft = { ...data.program };
@@ -32,14 +35,6 @@
 		editing = false;
 	}
 
-	function toggleCap(id: number) {
-		if (draftCaps.has(id)) draftCaps.delete(id);
-		else draftCaps.add(id);
-		draftCaps = new Set(draftCaps);
-	}
-
-	let savedTimer: ReturnType<typeof setTimeout>;
-
 	$: if (form?.success && form.program) {
 		data.program = { ...form.program };
 		draft = { ...form.program };
@@ -50,12 +45,6 @@
 		savedTimer = setTimeout(() => {
 			saved = false;
 		}, 3000);
-	}
-
-	function downloadsLabel(allowed: number): string {
-		if (allowed === -1) return '∞ unlimited';
-		if (allowed === 0) return '⛔ forbidden';
-		return String(allowed);
 	}
 
 	const osList = ['windows', 'linux', 'android', 'mac'];
@@ -109,7 +98,6 @@
 	{/if}
 
 	<form id="edit-form" method="POST" action="?/save" use:enhance>
-		<!-- Hidden inputs for capabilities -->
 		{#if editing}
 			{#each [...draftCaps] as capId}
 				<input type="hidden" name="capability_ids[]" value={capId} />
@@ -146,7 +134,6 @@
 							{/if}
 						</div>
 
-						<!-- Type — editable with color preview -->
 						<div class="field">
 							<span class="field-label">Type</span>
 							{#if editing}
@@ -171,18 +158,25 @@
 											<polyline points="6 9 12 15 18 9" />
 										</svg>
 									</div>
+									{#if selectedType}
+										<span
+											class="type-preview"
+											style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
+										>
+											{selectedType.name}
+										</span>
+									{/if}
 								</div>
-							{:else if selectedType}
+							{:else}
 								<span
-									class="type-preview"
-									style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
+									class="type-badge"
+									style="color:{typeColor}; background:{typeColor}1a; border-color:{typeColor}40;"
 								>
-									{selectedType.name}
+									{typeName}
 								</span>
 							{/if}
 						</div>
 
-						<!-- OS -->
 						<div class="field">
 							<span class="field-label">Operating System</span>
 							{#if editing}
@@ -213,44 +207,12 @@
 					</div>
 				</div>
 
-				<!-- Capabilities -->
+				<!-- Capabilities — shared CapabilityGrid component -->
 				<div class="card">
 					<div class="card-header"><span class="card-title">Capabilities</span></div>
 					<div class="card-body">
 						{#if editing}
-							<div class="cap-grid">
-								{#each data.capabilities as cap}
-									<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-									<div
-										class="cap-item"
-										class:cap-item--checked={draftCaps.has(cap.id)}
-										on:click={() => toggleCap(cap.id)}
-									>
-										<div class="checkbox" class:checkbox--checked={draftCaps.has(cap.id)}>
-											{#if draftCaps.has(cap.id)}
-												<svg
-													width="10"
-													height="10"
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													stroke-width="3"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-												>
-													<polyline points="20 6 9 17 4 12" />
-												</svg>
-											{/if}
-										</div>
-										<div class="cap-text">
-											<span class="cap-label">{cap.label}</span>
-											{#if cap.description}
-												<span class="cap-desc">{cap.description}</span>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
+							<CapabilityGrid options={data.capabilities} bind:selected={draftCaps} />
 						{:else if data.program.capabilities.length > 0}
 							<div class="cap-tags">
 								{#each data.program.capabilities as cap}
@@ -287,7 +249,7 @@
 				<div class="card">
 					<div class="card-header"><span class="card-title">Download Commands</span></div>
 					<div class="card-body">
-						<DownloadCommands filename={data.program.name} file_hash={data.program.file_hash} />
+						<DownloadCommands filename={data.program.original_name} file_hash={data.program.file_hash} />
 					</div>
 				</div>
 			</div>
@@ -313,12 +275,17 @@
 										type="number"
 										min="-1"
 										bind:value={draft.allowed_downloads}
+										on:input={() => {
+											if (draft.allowed_downloads < -1) draft.allowed_downloads = -1;
+										}}
 									/>
 									<span class="field-hint">-1 = unlimited · 0 = forbidden</span>
 								</div>
 							{:else}
 								<span class="field-value" class:forbidden={data.program.allowed_downloads === 0}>
-									{downloadsLabel(data.program.allowed_downloads)}
+									{#if data.program.allowed_downloads === -1}∞ unlimited
+									{:else if data.program.allowed_downloads === 0}⛔ forbidden
+									{:else}{data.program.allowed_downloads}{/if}
 								</span>
 							{/if}
 						</div>
@@ -610,7 +577,8 @@
 		pointer-events: none;
 	}
 
-	.type-preview {
+	.type-preview,
+	.type-badge {
 		display: inline-flex;
 		align-items: center;
 		padding: 3px 10px;
@@ -621,71 +589,7 @@
 		border: 1px solid transparent;
 	}
 
-	.cap-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 4px;
-		background: $bg-card;
-		border: 1px solid $border;
-		border-radius: $radius;
-		padding: 8px;
-	}
-
-	.cap-item {
-		display: flex;
-		align-items: flex-start;
-		gap: 10px;
-		padding: 10px;
-		border-radius: 6px;
-		border: 1px solid $border;
-		cursor: pointer;
-		transition: background $transition;
-		&:hover {
-			background: rgba(255, 255, 255, 0.04);
-		}
-		&--checked {
-			background: rgba($accent, 0.05);
-		}
-	}
-
-	.checkbox {
-		width: 16px;
-		height: 16px;
-		border-radius: 4px;
-		border: 1px solid $border;
-		background: $bg-main;
-		flex-shrink: 0;
-		margin-top: 1px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition:
-			background $transition,
-			border-color $transition;
-		&--checked {
-			background: $accent;
-			border-color: $accent;
-			color: white;
-		}
-	}
-
-	.cap-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.cap-label {
-		font-size: 13px;
-		font-weight: 500;
-		color: $text-primary;
-		line-height: 1.2;
-	}
-	.cap-desc {
-		font-size: 11px;
-		color: $accent;
-		line-height: 1.3;
-	}
-
+	// Read-only capability tags
 	.cap-tags {
 		display: flex;
 		flex-wrap: wrap;
