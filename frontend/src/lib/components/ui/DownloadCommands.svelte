@@ -1,9 +1,9 @@
 <script lang="ts">
 	export let filename: string;
-	export let id: number;
+	export let file_hash: string;
 
 	$: baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-	$: fileUrl = `${baseUrl}/download/programs/${id}`;
+	$: fileUrl = `${baseUrl}/api/download/programs/${file_hash}`;
 
 	// PowerShell variant toggle
 	let psVariant: 'long' | 'short' = 'long';

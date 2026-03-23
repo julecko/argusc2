@@ -21,7 +21,7 @@ use tokio_util::io::ReaderStream;
 use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/programs/{id}", get(download_program))
+    Router::new().route("/programs/{file_hash}", get(download_program))
 }
 
 // ── Error response ────────────────────────────────────────────────────────────
@@ -35,6 +35,12 @@ fn err_json(msg: impl Into<String>) -> Json<ErrorResponse> {
     Json(ErrorResponse { error: msg.into() })
 }
 
+// ── Helpers  ──────────────────────────────────────────────────────────────────
+
+fn is_valid_sha256(hash: &str) -> bool {
+    hash.len() == 64 && hash.chars().all(|c| c.is_ascii_hexdigit())
+}
+
 // ── DB row ────────────────────────────────────────────────────────────────────
 
 #[derive(sqlx::FromRow)]
@@ -43,21 +49,25 @@ struct ProgramFile {
     original_name: String,
     storage_path: String,
     allowed_downloads: i64,
-    downloads: i64,
 }
 
 // ── GET /download/programs/{id} ───────────────────────────────────────────────
 
 async fn download_program(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(file_hash): Path<String>,
 ) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
-    // ── 1. Fetch program row ──────────────────────────────────
+    // ── 1. Verify if hash is valid ────────────────────────────
+    if !is_valid_sha256(&file_hash) {
+        return Err((StatusCode::BAD_REQUEST, err_json("Invalid hash format")));
+    }
+
+    // ── 2. Fetch program row ──────────────────────────────────
     let program = sqlx::query_as::<_, ProgramFile>(
-        "SELECT id, original_name, storage_path, allowed_downloads, downloads
-         FROM programs WHERE id = ?",
+        "SELECT id, original_name, storage_path, allowed_downloads
+         FROM programs WHERE file_hash = ?",
     )
-    .bind(id)
+    .bind(&file_hash)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| {
@@ -68,7 +78,7 @@ async fn download_program(
     })?
     .ok_or_else(|| (StatusCode::NOT_FOUND, err_json("Program not found")))?;
 
-    // ── 2. Enforce download limits ────────────────────────────
+    // ── 3. Enforce download limits ────────────────────────────
     match program.allowed_downloads {
         0 => {
             // Explicitly forbidden
@@ -77,20 +87,10 @@ async fn download_program(
                 err_json("Downloads are forbidden for this program"),
             ));
         }
-        n if n > 0 && program.downloads >= n => {
-            // Fixed limit exhausted
-            return Err((
-                StatusCode::FORBIDDEN,
-                err_json(format!(
-                    "Download limit reached ({}/{} used)",
-                    program.downloads, n
-                )),
-            ));
-        }
         _ => {} // -1 = unlimited, or limit not yet reached — proceed
     }
 
-    // ── 3. Open file ──────────────────────────────────────────
+    // ── 4. Open file ──────────────────────────────────────────
     let file = File::open(&program.storage_path)
         .await
         .map_err(|_| (StatusCode::NOT_FOUND, err_json("File not found on disk")))?;
@@ -104,7 +104,7 @@ async fn download_program(
 
     let file_size = metadata.len();
 
-    // ── 4. Increment counters atomically ──────────────────────
+    // ── 5. Increment counters atomically ──────────────────────
     sqlx::query(
         "UPDATE programs
          SET
@@ -125,7 +125,7 @@ async fn download_program(
         )
     })?;
 
-    // ── 5. Stream file to client ──────────────────────────────
+    // ── 6. Stream file to client ──────────────────────────────
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 

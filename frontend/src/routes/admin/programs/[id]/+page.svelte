@@ -287,7 +287,7 @@
 				<div class="card">
 					<div class="card-header"><span class="card-title">Download Commands</span></div>
 					<div class="card-body">
-						<DownloadCommands filename={data.program.name} id={data.program.id} />
+						<DownloadCommands filename={data.program.name} file_hash={data.program.file_hash} />
 					</div>
 				</div>
 			</div>
