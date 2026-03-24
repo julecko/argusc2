@@ -3,6 +3,12 @@
 //    0 = forbidden (no downloads allowed)
 //   >0 = fixed limit
 //
+// file_type semantics:
+//   exe – standard executable; ws_key is relevant
+//   zip – archive; ws_key is relevant; program_to_run holds the entry-point inside the zip
+//   dll – dynamic library;  ws_key is NOT surfaced in the UI
+//   other – any other file type
+//
 // Routes:
 //   GET    /api/programs          → list all programs
 //   GET    /api/programs/{id}     → single program
@@ -14,7 +20,7 @@ use axum::{
     Json, Router,
     extract::{Multipart, Path, State},
     http::StatusCode,
-    routing::{get},
+    routing::get,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -25,14 +31,21 @@ use crate::{auth::Claims, state::AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/",     get(list_programs).post(upload_program))
-        .route("/{id}", get(get_program).patch(update_program).delete(delete_program))
+        .route("/", get(list_programs).post(upload_program))
+        .route(
+            "/{id}",
+            get(get_program)
+                .patch(update_program)
+                .delete(delete_program),
+        )
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
-struct ErrorResponse { error: String }
+struct ErrorResponse {
+    error: String,
+}
 
 fn err(msg: impl Into<String>) -> Json<ErrorResponse> {
     Json(ErrorResponse { error: msg.into() })
@@ -58,37 +71,39 @@ fn rand_hex64() -> String {
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct ProgramRow {
-    pub id:               i64,
-    pub type_id:          i64,
-    pub type_name:        Option<String>,
-    pub type_color:       Option<String>,
-    pub uploaded_by:      Option<i64>,
-    pub uploader_name:    Option<String>,
-    pub name:             String,
-    pub original_name:    String,
-    pub version:          String,
-    pub os:               String,
-    pub storage_path:     String,
-    pub filesize:         i64,
-    pub file_hash:        String,
-    pub ws_key:           String,
-    pub description:      Option<String>,
-    pub downloads:        i64,
-    pub allowed_downloads: i64,  // -1 = unlimited, 0 = forbidden, >0 = fixed limit
-    pub created_at:       String,
-    pub updated_at:       String,
+    pub id: i64,
+    pub type_id: i64,
+    pub type_name: Option<String>,
+    pub type_color: Option<String>,
+    pub uploaded_by: Option<i64>,
+    pub uploader_name: Option<String>,
+    pub name: String,
+    pub original_name: String,
+    pub version: String,
+    pub os: String,
+    pub storage_path: String,
+    pub filesize: i64,
+    pub file_hash: String,
+    pub ws_key: String,
+    pub description: Option<String>,
+    pub downloads: i64,
+    pub allowed_downloads: i64, // -1 = unlimited, 0 = forbidden, >0 = fixed limit
+    pub file_type: String,      // "exe" | "zip" | "dll" | "other"
+    pub program_to_run: Option<String>, // only set when file_type = "zip"
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct CapabilityRef {
-    pub id:   i64,
+    pub id: i64,
     pub name: String,
 }
 
 #[derive(Serialize)]
 pub struct ProgramDetail {
     #[serde(flatten)]
-    pub program:      ProgramRow,
+    pub program: ProgramRow,
     pub capabilities: Vec<CapabilityRef>,
 }
 
@@ -104,6 +119,7 @@ const PROGRAM_SELECT: &str = r#"
         p.name, p.original_name, p.version, p.os,
         p.storage_path, p.filesize, p.file_hash, p.ws_key,
         p.description, p.downloads, p.allowed_downloads,
+        p.file_type, p.program_to_run,
         CAST(p.created_at AS CHAR) AS created_at,
         CAST(p.updated_at AS CHAR) AS updated_at
     FROM programs p
@@ -131,13 +147,11 @@ async fn replace_capabilities(
     program_id: i64,
     capability_ids: &[i64],
 ) -> Result<(), sqlx::Error> {
-    // Delete existing
     sqlx::query("DELETE FROM program_capabilities WHERE program_id = ?")
         .bind(program_id)
         .execute(db)
         .await?;
 
-    // Insert new
     for &cap_id in capability_ids {
         sqlx::query(
             "INSERT IGNORE INTO program_capabilities (program_id, capability_id) VALUES (?, ?)",
@@ -157,12 +171,16 @@ async fn list_programs(
     State(state): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<Vec<ProgramRow>>, (StatusCode, Json<ErrorResponse>)> {
-    let rows = sqlx::query_as::<_, ProgramRow>(
-        &format!("{PROGRAM_SELECT} ORDER BY p.created_at DESC"),
-    )
-    .fetch_all(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    let rows =
+        sqlx::query_as::<_, ProgramRow>(&format!("{PROGRAM_SELECT} ORDER BY p.created_at DESC"))
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    err(format!("DB error: {e}")),
+                )
+            })?;
 
     Ok(Json(rows))
 }
@@ -174,20 +192,29 @@ async fn get_program(
     Path(id): Path<i64>,
     _claims: Claims,
 ) -> Result<Json<ProgramDetail>, (StatusCode, Json<ErrorResponse>)> {
-    let program = sqlx::query_as::<_, ProgramRow>(
-        &format!("{PROGRAM_SELECT} WHERE p.id = ?"),
-    )
-    .bind(id)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?
-    .ok_or_else(|| (StatusCode::NOT_FOUND, err("Program not found")))?;
-
-    let capabilities = fetch_capabilities(&state.db, id)
+    let program = sqlx::query_as::<_, ProgramRow>(&format!("{PROGRAM_SELECT} WHERE p.id = ?"))
+        .bind(id)
+        .fetch_optional(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, err("Program not found")))?;
 
-    Ok(Json(ProgramDetail { program, capabilities }))
+    let capabilities = fetch_capabilities(&state.db, id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("DB error: {e}")),
+        )
+    })?;
+
+    Ok(Json(ProgramDetail {
+        program,
+        capabilities,
+    }))
 }
 
 // ── POST /api/programs ────────────────────────────────────────────────────────
@@ -197,42 +224,53 @@ async fn upload_program(
     claims: Claims,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<ProgramDetail>), (StatusCode, Json<ErrorResponse>)> {
-    let mut file_bytes:        Option<Vec<u8>> = None;
-    let mut original_name:     String          = String::new();
-    let mut name:              String          = String::new();
-    let mut version:           String          = String::new();
-    let mut type_id:           i64             = 0;
-    let mut os:                String          = String::new();
-    let mut allowed_downloads: i64             = -1; // default = unlimited
-    let mut description:       Option<String>  = None;
-    let mut ws_key_input:      String          = String::new();
-    let mut capability_ids:    Vec<i64>        = Vec::new();
+    let mut file_bytes: Option<Vec<u8>> = None;
+    let mut original_name: String = String::new();
+    let mut name: String = String::new();
+    let mut version: String = String::new();
+    let mut type_id: i64 = 0;
+    let mut os: String = String::new();
+    let mut allowed_downloads: i64 = -1;
+    let mut description: Option<String> = None;
+    let mut ws_key_input: String = String::new();
+    let mut capability_ids: Vec<i64> = Vec::new();
+    let mut file_type: String = "exe".to_string();
+    let mut program_to_run: Option<String> = None;
 
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, err(format!("Multipart error: {e}"))))?
-    {
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            err(format!("Multipart error: {e}")),
+        )
+    })? {
         match field.name().unwrap_or("") {
             "file" => {
                 original_name = field.file_name().unwrap_or("unknown").to_string();
                 file_bytes = Some(
-                    field.bytes().await
+                    field
+                        .bytes()
+                        .await
                         .map_err(|e| (StatusCode::BAD_REQUEST, err(format!("Read error: {e}"))))?
                         .to_vec(),
                 );
             }
-            "name"              => name              = field.text().await.unwrap_or_default(),
-            "version"           => version           = field.text().await.unwrap_or_default(),
-            "type_id"           => type_id           = field.text().await.unwrap_or_default().parse().unwrap_or(0),
-            "os"                => os                = field.text().await.unwrap_or_default(),
-            "allowed_downloads" => allowed_downloads = field.text().await.unwrap_or_default().parse().unwrap_or(-1),
-            "description"       => {
+            "name" => name = field.text().await.unwrap_or_default(),
+            "version" => version = field.text().await.unwrap_or_default(),
+            "type_id" => type_id = field.text().await.unwrap_or_default().parse().unwrap_or(0),
+            "os" => os = field.text().await.unwrap_or_default(),
+            "allowed_downloads" => {
+                allowed_downloads = field.text().await.unwrap_or_default().parse().unwrap_or(-1)
+            }
+            "description" => {
                 let t = field.text().await.unwrap_or_default();
                 description = if t.is_empty() { None } else { Some(t) };
             }
             "ws_key" => ws_key_input = field.text().await.unwrap_or_default(),
-            // capabilities[] repeated field — each value is a capability id
+            "file_type" => file_type = field.text().await.unwrap_or_default(),
+            "program_to_run" => {
+                let t = field.text().await.unwrap_or_default();
+                program_to_run = if t.is_empty() { None } else { Some(t) };
+            }
             "capabilities[]" => {
                 if let Ok(id) = field.text().await.unwrap_or_default().parse::<i64>() {
                     capability_ids.push(id);
@@ -242,50 +280,85 @@ async fn upload_program(
         }
     }
 
-    let bytes = file_bytes
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, err("File is required")))?;
-    if name.trim().is_empty()    { return Err((StatusCode::UNPROCESSABLE_ENTITY, err("Name is required"))); }
-    if version.trim().is_empty() { return Err((StatusCode::UNPROCESSABLE_ENTITY, err("Version is required"))); }
-    if type_id == 0              { return Err((StatusCode::UNPROCESSABLE_ENTITY, err("type_id is required"))); }
-    if os.trim().is_empty()      { return Err((StatusCode::UNPROCESSABLE_ENTITY, err("OS is required"))); }
+    // Validate file_type
+    let file_type = match file_type.as_str() {
+        "exe" | "zip" | "dll" | "other" => file_type,
+        _ => "exe".to_string(),
+    };
 
-    // Use provided ws_key or generate one
+    // For zip, program_to_run is required
+    if file_type == "zip" && program_to_run.as_deref().unwrap_or("").trim().is_empty() {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            err("program_to_run is required for zip files"),
+        ));
+    }
+    // Clear program_to_run for non-zip
+    if file_type != "zip" {
+        program_to_run = None;
+    }
+
+    let bytes = file_bytes.ok_or_else(|| (StatusCode::BAD_REQUEST, err("File is required")))?;
+    if name.trim().is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, err("Name is required")));
+    }
+    if version.trim().is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, err("Version is required")));
+    }
+    if type_id == 0 {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, err("type_id is required")));
+    }
+    if os.trim().is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, err("OS is required")));
+    }
+
+    // ws_key: for dll we still store a generated key (ignored by UI)
     let ws_key = if ws_key_input.len() == 64 {
         ws_key_input
     } else {
         rand_hex64()
     };
 
-    let file_hash    = hash_bytes(&bytes);
-    let storage_dir  = PathBuf::from("uploads");
-    fs::create_dir_all(&storage_dir)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("Storage error: {e}"))))?;
+    let file_hash = hash_bytes(&bytes);
+    let storage_dir = PathBuf::from("uploads");
+    fs::create_dir_all(&storage_dir).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("Storage error: {e}")),
+        )
+    })?;
 
     let storage_path = storage_dir
         .join(format!("{}_{}", &file_hash[..16], &original_name))
         .to_string_lossy()
         .to_string();
 
-    fs::write(&storage_path, &bytes)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("Write error: {e}"))))?;
+    fs::write(&storage_path, &bytes).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("Write error: {e}")),
+        )
+    })?;
 
     let filesize: i64 = bytes.len() as i64;
 
-    let uploader_id: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM admins WHERE username = ?",
-    )
-    .bind(&claims.sub)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    let uploader_id: Option<i64> = sqlx::query_scalar("SELECT id FROM admins WHERE username = ?")
+        .bind(&claims.sub)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
     let insert_id = sqlx::query(
         r#"INSERT INTO programs
             (type_id, uploaded_by, name, original_name, version, os,
-             storage_path, filesize, file_hash, ws_key, description, allowed_downloads)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+             storage_path, filesize, file_hash, ws_key, description,
+             allowed_downloads, file_type, program_to_run)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
     )
     .bind(type_id)
     .bind(uploader_id)
@@ -299,13 +372,21 @@ async fn upload_program(
     .bind(&ws_key)
     .bind(&description)
     .bind(allowed_downloads)
+    .bind(&file_type)
+    .bind(&program_to_run)
     .execute(&state.db)
     .await
     .map_err(|e| {
         if e.to_string().to_lowercase().contains("duplicate") {
-            (StatusCode::CONFLICT, err("A program with this file hash or ws_key already exists"))
+            (
+                StatusCode::CONFLICT,
+                err("A program with this file hash or ws_key already exists"),
+            )
         } else {
-            (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}")))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
         }
     })?
     .last_insert_id() as i64;
@@ -313,36 +394,57 @@ async fn upload_program(
     if !capability_ids.is_empty() {
         replace_capabilities(&state.db, insert_id, &capability_ids)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    err(format!("DB error: {e}")),
+                )
+            })?;
     }
 
-    let program = sqlx::query_as::<_, ProgramRow>(
-        &format!("{PROGRAM_SELECT} WHERE p.id = ?"),
-    )
-    .bind(insert_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    let program = sqlx::query_as::<_, ProgramRow>(&format!("{PROGRAM_SELECT} WHERE p.id = ?"))
+        .bind(insert_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
     let capabilities = fetch_capabilities(&state.db, insert_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
-    Ok((StatusCode::CREATED, Json(ProgramDetail { program, capabilities })))
+    Ok((
+        StatusCode::CREATED,
+        Json(ProgramDetail {
+            program,
+            capabilities,
+        }),
+    ))
 }
 
 // ── PATCH /api/programs/{id} ──────────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct UpdateRequest {
-    name:              Option<String>,
-    version:           Option<String>,
-    os:                Option<String>,
-    description:       Option<String>,
-    allowed_downloads: Option<i64>,   // -1 = unlimited, 0 = forbidden
-    ws_key:            Option<String>,
-    type_id:           Option<i64>,
-    capability_ids:    Option<Vec<i64>>,
+    name: Option<String>,
+    version: Option<String>,
+    os: Option<String>,
+    description: Option<String>,
+    allowed_downloads: Option<i64>,
+    ws_key: Option<String>,
+    type_id: Option<i64>,
+    file_type: Option<String>,
+    program_to_run: Option<String>,
+    capability_ids: Option<Vec<i64>>,
 }
 
 async fn update_program(
@@ -353,24 +455,69 @@ async fn update_program(
 ) -> Result<Json<ProgramDetail>, (StatusCode, Json<ErrorResponse>)> {
     if let Some(ref name) = body.name {
         if name.trim().is_empty() {
-            return Err((StatusCode::UNPROCESSABLE_ENTITY, err("Name cannot be empty")));
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                err("Name cannot be empty"),
+            ));
         }
     }
     if let Some(ref ws) = body.ws_key {
         if ws.len() != 64 {
-            return Err((StatusCode::UNPROCESSABLE_ENTITY, err("ws_key must be exactly 64 characters")));
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                err("ws_key must be exactly 64 characters"),
+            ));
+        }
+    }
+    if let Some(ref ft) = body.file_type {
+        if !["exe", "zip", "dll", "other"].contains(&ft.as_str()) {
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                err("file_type must be exe, zip, dll or other"),
+            ));
         }
     }
 
-    // Check program exists
     let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM programs WHERE id = ?")
         .bind(id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
     if exists.is_none() {
         return Err((StatusCode::NOT_FOUND, err("Program not found")));
+    }
+
+    // Determine effective file_type after update for zip validation
+    let current_file_type: String =
+        sqlx::query_scalar("SELECT file_type FROM programs WHERE id = ?")
+            .bind(id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    err(format!("DB error: {e}")),
+                )
+            })?;
+
+    let effective_file_type = body.file_type.as_deref().unwrap_or(&current_file_type);
+    if effective_file_type == "zip"
+        && body
+            .program_to_run
+            .as_deref()
+            .map(|s| s.trim().is_empty())
+            .unwrap_or(false)
+    {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            err("program_to_run is required for zip files"),
+        ));
     }
 
     sqlx::query(
@@ -381,7 +528,9 @@ async fn update_program(
             description       = COALESCE(?, description),
             allowed_downloads = COALESCE(?, allowed_downloads),
             ws_key            = COALESCE(?, ws_key),
-            type_id           = COALESCE(?, type_id)
+            type_id           = COALESCE(?, type_id),
+            file_type         = COALESCE(?, file_type),
+            program_to_run    = COALESCE(?, program_to_run)
            WHERE id = ?"#,
     )
     .bind(body.name.as_deref())
@@ -391,31 +540,51 @@ async fn update_program(
     .bind(body.allowed_downloads)
     .bind(body.ws_key.as_deref())
     .bind(body.type_id)
+    .bind(body.file_type.as_deref())
+    .bind(body.program_to_run.as_deref())
     .bind(id)
     .execute(&state.db)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("DB error: {e}")),
+        )
+    })?;
 
-    // Replace capabilities if provided
     if let Some(ref cap_ids) = body.capability_ids {
         replace_capabilities(&state.db, id, cap_ids)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    err(format!("DB error: {e}")),
+                )
+            })?;
     }
 
-    let program = sqlx::query_as::<_, ProgramRow>(
-        &format!("{PROGRAM_SELECT} WHERE p.id = ?"),
-    )
-    .bind(id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
-
-    let capabilities = fetch_capabilities(&state.db, id)
+    let program = sqlx::query_as::<_, ProgramRow>(&format!("{PROGRAM_SELECT} WHERE p.id = ?"))
+        .bind(id)
+        .fetch_one(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
-    Ok(Json(ProgramDetail { program, capabilities }))
+    let capabilities = fetch_capabilities(&state.db, id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("DB error: {e}")),
+        )
+    })?;
+
+    Ok(Json(ProgramDetail {
+        program,
+        capabilities,
+    }))
 }
 
 // ── DELETE /api/programs/{id} ──────────────────────────────────────────────────
@@ -430,17 +599,19 @@ async fn delete_program(
     Path(id): Path<i64>,
     _claims: Claims,
 ) -> Result<Json<DeleteResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // Get storage path before deleting the row
-    let path: Option<String> =
-        sqlx::query_scalar("SELECT storage_path FROM programs WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    let path: Option<String> = sqlx::query_scalar("SELECT storage_path FROM programs WHERE id = ?")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                err(format!("DB error: {e}")),
+            )
+        })?;
 
     let storage_path = path.ok_or_else(|| (StatusCode::NOT_FOUND, err("Program not found")))?;
 
-    // Delete DB row first
     sqlx::query("DELETE FROM programs WHERE id = ?")
         .bind(id)
         .execute(&state.db)

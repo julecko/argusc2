@@ -5,8 +5,10 @@ CREATE TABLE programs (
     name              VARCHAR(255)                               NOT NULL,
     original_name     VARCHAR(255)                               NOT NULL,
     version           VARCHAR(50)                                NOT NULL,
+    file_type         ENUM('exe', 'zip', 'dll', 'other')         NOT NULL DEFAULT 'exe',
     os                ENUM('windows', 'linux', 'android', 'mac') NOT NULL,
     storage_path      VARCHAR(512)                               NOT NULL,
+    program_to_run    VARCHAR(255)                               NULL,
     filesize          BIGINT                                     NOT NULL, -- in bytes
     file_hash         CHAR(64)                                   NOT NULL UNIQUE, -- e.g., SHA-256
     ws_key            CHAR(64)                                   NOT NULL UNIQUE, -- e.g., SHA-256

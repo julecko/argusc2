@@ -56,6 +56,18 @@
 		mac: 'macOS'
 	};
 
+	const fileTypeLabels: Record<string, string> = {
+		exe: 'Executable (.exe)',
+		zip: 'Archive (.zip)',
+		dll: 'Library (.dll)',
+		other: 'Other (.any)'
+	};
+
+	// Derived flags (read from draft while editing, program otherwise)
+	$: activeFileType = editing ? draft.file_type : data.program.file_type;
+	$: isDll = activeFileType === 'dll';
+	$: isZip = activeFileType === 'zip';
+
 	$: typeColor = data.program.type_color ?? '#6b6b7e';
 	$: typeName = data.program.type_name ?? 'Unknown';
 	$: downloads = downloadsDisplay(data.program.downloads, data.program.allowed_downloads);
@@ -158,14 +170,6 @@
 											<polyline points="6 9 12 15 18 9" />
 										</svg>
 									</div>
-									{#if selectedType}
-										<span
-											class="type-preview"
-											style="color:{selectedType.color}; background:{selectedType.color}1a; border-color:{selectedType.color}40;"
-										>
-											{selectedType.name}
-										</span>
-									{/if}
 								</div>
 							{:else}
 								<span
@@ -204,10 +208,40 @@
 								<span class="field-value">{osLabels[data.program.os]}</span>
 							{/if}
 						</div>
+
+						<!-- File Type -->
+						<div class="field">
+							<span class="field-label">File Type</span>
+							<span class="field-value">
+								<span class="file-type-badge file-type-badge--{data.program.file_type}">
+									{fileTypeLabels[data.program.file_type] ?? data.program.file_type}
+								</span>
+							</span>
+						</div>
+
+						<!-- ZIP: entry-point file -->
+						{#if isZip}
+							<div class="field field--stack">
+								<span class="field-label">
+									Entry-point File
+									<span class="field-hint-inline">(run after extraction)</span>
+								</span>
+								{#if editing}
+									<input
+										name="program_to_run"
+										class="field-input field-input--full"
+										bind:value={draft.program_to_run}
+										placeholder="e.g., setup.exe"
+									/>
+								{:else}
+									<span class="field-value mono">{data.program.program_to_run ?? '—'}</span>
+								{/if}
+							</div>
+						{/if}
 					</div>
 				</div>
 
-				<!-- Capabilities — shared CapabilityGrid component -->
+				<!-- Capabilities -->
 				<div class="card">
 					<div class="card-header"><span class="card-title">Capabilities</span></div>
 					<div class="card-body">
@@ -249,7 +283,12 @@
 				<div class="card">
 					<div class="card-header"><span class="card-title">Download Commands</span></div>
 					<div class="card-body">
-						<DownloadCommands filename={data.program.original_name} file_hash={data.program.file_hash} />
+						<DownloadCommands
+							filename={data.program.original_name}
+							file_hash={data.program.file_hash}
+							file_type={data.program.file_type}
+							program_to_run={data.program.program_to_run}
+						/>
 					</div>
 				</div>
 			</div>
@@ -321,20 +360,23 @@
 							<span class="field-value mono hash">{data.program.file_hash}</span>
 						</div>
 
-						<div class="field field--stack">
-							<span class="field-label">WebSocket key</span>
-							{#if editing}
-								<input
-									name="ws_key"
-									class="field-input field-input--full"
-									bind:value={draft.ws_key}
-									placeholder="64-char hex key"
-									maxlength="64"
-								/>
-							{:else}
-								<span class="field-value mono hash">{data.program.ws_key}</span>
-							{/if}
-						</div>
+						<!-- ws_key hidden for DLL -->
+						{#if !isDll}
+							<div class="field field--stack">
+								<span class="field-label">WebSocket key</span>
+								{#if editing}
+									<input
+										name="ws_key"
+										class="field-input field-input--full"
+										bind:value={draft.ws_key}
+										placeholder="64-char hex key"
+										maxlength="64"
+									/>
+								{:else}
+									<span class="field-value mono hash">{data.program.ws_key}</span>
+								{/if}
+							</div>
+						{/if}
 
 						<div class="field field--stack">
 							<span class="field-label">Storage path</span>
@@ -469,6 +511,12 @@
 		flex-shrink: 0;
 	}
 
+	.field-hint-inline {
+		font-size: 11px;
+		font-weight: 400;
+		color: $text-muted;
+	}
+
 	.field-value {
 		font-size: 13px;
 		color: $text-primary;
@@ -589,7 +637,70 @@
 		border: 1px solid transparent;
 	}
 
-	// Read-only capability tags
+	// ── File-type toggle (edit mode) ──────────────────────────
+	.file-type-group {
+		display: flex;
+		gap: 6px;
+	}
+
+	.file-type-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 5px 10px;
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: $radius;
+		color: $text-muted;
+		font-size: 11px;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			border-color $transition,
+			color $transition,
+			background $transition;
+
+		&:hover {
+			border-color: $text-muted;
+			color: $text-primary;
+		}
+
+		&--active {
+			border-color: $accent;
+			color: $accent;
+			background: rgba($accent, 0.08);
+		}
+	}
+
+	// ── File-type badge (view mode) ───────────────────────────
+	.file-type-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 3px 10px;
+		border-radius: 20px;
+		font-size: 11px;
+		font-weight: 600;
+		border: 1px solid transparent;
+
+		&--exe {
+			color: #60a5fa;
+			background: rgba(#60a5fa, 0.1);
+			border-color: rgba(#60a5fa, 0.25);
+		}
+		&--zip {
+			color: #f59e0b;
+			background: rgba(#f59e0b, 0.1);
+			border-color: rgba(#f59e0b, 0.25);
+		}
+		&--dll {
+			color: #a78bfa;
+			background: rgba(#a78bfa, 0.1);
+			border-color: rgba(#a78bfa, 0.25);
+		}
+	}
+
+	// ── Read-only capability tags ─────────────────────────────
 	.cap-tags {
 		display: flex;
 		flex-wrap: wrap;
