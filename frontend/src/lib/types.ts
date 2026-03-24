@@ -78,3 +78,12 @@ export interface Program {
 export interface ProgramDetail extends Program {
 	capabilities: Array<{ id: number; name: string }>;
 }
+
+// ── Accounts ────────────────────────────────────────────────────────────────
+export interface Account {
+    id: number,
+    username: string,
+    email: string,
+    created_at: string,
+    last_login: string,
+}
