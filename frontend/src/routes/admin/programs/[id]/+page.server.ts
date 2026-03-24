@@ -8,13 +8,9 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
     const id    = parseInt(params.id, 10);
     const token = cookies.get('token');
 
-    console.log('1. id:', id, 'token exists:', !!token);
-
     if (isNaN(id)) error(400, 'Invalid program ID');
 
     const headers = { Authorization: `Bearer ${token}` };
-
-    console.log('2. fetching...');
 
     const [programRes, typesRes, capsRes] = await Promise.all([
         fetch(`/api/programs/${id}`, { headers }),
@@ -22,27 +18,16 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
         fetch(`/api/capabilities/all`,   { headers }),
     ]);
 
-    console.log('3. statuses:', programRes.status, typesRes.status, capsRes.status);
-
     if (programRes.status === 404) error(404, 'Program not found');
     if (!programRes.ok) {
         const body = await programRes.text();
-        console.log('4. programRes body:', body.substring(0, 500));
         error(500, 'Failed to load program');
     }
 
-    console.log('5. parsing JSON...');  
-
     const program: ProgramDetail = await programRes.json();
-
-    console.log('6. program:', JSON.stringify(program).substring(0, 200));
-
-    console.log(typesRes, capsRes);
 
     const programTypes: ProgramType[] = typesRes.ok ? await typesRes.json() : [];
     const capabilities: Capability[]  = capsRes.ok  ? await capsRes.json()  : [];
-
-    console.log('7. done. types:', programTypes.length, 'caps:', capabilities.length);
 
     return { program, programTypes, capabilities };
 };
