@@ -47,11 +47,25 @@
 	let allowedDownloads: number = -1;
 	let description: string = '';
 	let wsKey: string = '';
+	let fileType: 'exe' | 'zip' | 'dll' | 'other' = 'exe';
+	let programToRun: string = '';
 	let selectedCaps: Set<number> = new Set();
 	let error: string = '';
 	let loading: boolean = false;
 
 	const osList = ['windows', 'linux', 'android', 'mac'];
+	const fileTypeList = ['exe', 'zip', 'dll', 'other'] as const;
+	const fileTypeLabels: Record<string, string> = {
+		exe: 'Executable (.exe)',
+		zip: 'Archive (.zip)',
+		dll: 'Library (.dll)',
+        other: 'Unknown (.any)',
+	};
+
+	// ── Derived ───────────────────────────────────────────────
+	$: isDll = fileType === 'dll';
+	$: isZip = fileType === 'zip';
+    $: isOther = fileType === 'other';
 
 	// ── Helpers ───────────────────────────────────────────────
 	function getToken(): string {
@@ -81,8 +95,11 @@
 		if (!version.trim()) return 'Version is required.';
 		if (!typeId) return 'Please select a program type.';
 		if (!os) return 'Please select an OS.';
-		if (!wsKey.trim()) return 'WebSocket key is required.';
-		if (wsKey.length !== 64) return 'WebSocket key must be exactly 64 hex characters.';
+		if (!isDll && !isOther) {
+			if (!wsKey.trim()) return 'WebSocket key is required.';
+			if (wsKey.length !== 64) return 'WebSocket key must be exactly 64 hex characters.';
+		}
+		if (isZip && !programToRun.trim()) return 'Entry-point file is required for ZIP archives.';
 		return '';
 	}
 
@@ -101,7 +118,9 @@
 			fd.append('os', os);
 			fd.append('allowed_downloads', String(allowedDownloads));
 			fd.append('description', description);
-			fd.append('ws_key', wsKey.trim());
+			fd.append('file_type', fileType);
+			if (!isDll && !isOther) fd.append('ws_key', wsKey.trim());
+			if (isZip) fd.append('program_to_run', programToRun.trim());
 			for (const id of selectedCaps) fd.append('capabilities[]', String(id));
 
 			const res = await fetch('/api/programs', {
@@ -137,6 +156,8 @@
 		allowedDownloads = -1;
 		description = '';
 		wsKey = '';
+		fileType = 'exe';
+		programToRun = '';
 		selectedCaps = new Set();
 		error = '';
 		loading = false;
@@ -206,17 +227,6 @@
 						<polyline points="6 9 12 15 18 9" />
 					</svg>
 				</div>
-				{#if typeId}
-					{@const selected = programTypes.find((t) => String(t.id) === typeId)}
-					{#if selected}
-						<span
-							class="type-preview"
-							style="color:{selected.color}; background:{selected.color}1a; border-color:{selected.color}40;"
-						>
-							{selected.name}
-						</span>
-					{/if}
-				{/if}
 			</div>
 
 			<SelectInput
@@ -228,7 +238,70 @@
 			/>
 		</FormRow>
 
+		<!-- File Type -->
 		<div class="form-field">
+			<label class="form-label" for="prog-filetype">
+				File Type <span class="required">*</span>
+			</label>
+			<div class="file-type-group">
+				{#each fileTypeList as ft}
+					<button
+						type="button"
+						class="file-type-btn"
+						class:file-type-btn--active={fileType === ft}
+						on:click={() => (fileType = ft)}
+					>
+						{fileTypeLabels[ft]}
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- ZIP: entry-point file -->
+		{#if isZip}
+			<div class="form-field">
+				<label class="form-label" for="prog-ptr">
+					Entry-point File <span class="required">*</span>
+					<span class="form-hint">(file to run after extraction)</span>
+				</label>
+				<input
+					id="prog-ptr"
+					class="form-input"
+					type="text"
+					placeholder="e.g., setup.exe or run.bat"
+					bind:value={programToRun}
+				/>
+			</div>
+		{/if}
+
+		<!-- WebSocket key — hidden for DLL -->
+		{#if !isDll && !isOther}
+			<div class="form-field">
+				<label class="form-label" for="prog-wskey">
+					WebSocket Key <span class="required">*</span>
+					<span class="form-hint">(64-char hex)</span>
+				</label>
+				<div class="wskey-row">
+					<input
+						id="prog-wskey"
+						class="form-input wskey-input"
+						type="text"
+						maxlength="64"
+						placeholder="64-character hex key…"
+						bind:value={wsKey}
+						spellcheck="false"
+					/>
+					<button type="button" class="generate-btn" on:click={generateWsKey}>Generate</button>
+				</div>
+				{#if wsKey}
+					<span class="wskey-len" class:ok={wsKey.length === 64} class:bad={wsKey.length !== 64}>
+						{wsKey.length} / 64
+					</span>
+				{/if}
+			</div>
+		{/if}
+
+        <div class="form-field">
 			<label class="form-label" for="prog-dl">
 				Allowed Downloads
 				<span class="form-hint">(-1 = unlimited · 0 = forbidden · &gt;0 = fixed limit)</span>
@@ -243,31 +316,6 @@
 					if (allowedDownloads < -1) allowedDownloads = -1;
 				}}
 			/>
-		</div>
-
-		<!-- WebSocket key -->
-		<div class="form-field">
-			<label class="form-label" for="prog-wskey">
-				WebSocket Key <span class="required">*</span>
-				<span class="form-hint">(64-char hex)</span>
-			</label>
-			<div class="wskey-row">
-				<input
-					id="prog-wskey"
-					class="form-input wskey-input"
-					type="text"
-					maxlength="64"
-					placeholder="64-character hex key…"
-					bind:value={wsKey}
-					spellcheck="false"
-				/>
-				<button type="button" class="generate-btn" on:click={generateWsKey}>Generate</button>
-			</div>
-			{#if wsKey}
-				<span class="wskey-len" class:ok={wsKey.length === 64} class:bad={wsKey.length !== 64}>
-					{wsKey.length} / 64
-				</span>
-			{/if}
 		</div>
 
 		<!-- Capabilities — shared component -->
@@ -391,17 +439,44 @@
 		pointer-events: none;
 	}
 
-	.type-preview {
-		display: inline-flex;
-		align-items: center;
-		padding: 2px 10px;
-		border-radius: 20px;
-		font-size: 11px;
-		font-weight: 600;
-		border: 1px solid transparent;
-		align-self: flex-start;
+	// ── File-type toggle group ──────────────────────────────
+	.file-type-group {
+		display: flex;
+		gap: 8px;
 	}
 
+	.file-type-btn {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 8px 10px;
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: $radius;
+		color: $text-muted;
+		font-size: 12px;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			border-color $transition,
+			color $transition,
+			background $transition;
+
+		&:hover {
+			border-color: $text-muted;
+			color: $text-primary;
+		}
+
+		&--active {
+			border-color: $accent;
+			color: $accent;
+			background: rgba($accent, 0.08);
+		}
+	}
+
+	// ── WS key ────────────────────────────────────────────────
 	.wskey-row {
 		display: flex;
 		gap: 8px;

@@ -63,6 +63,8 @@ export interface Program {
 	version:           string;
 	os:                ProgramOS;
 	storage_path:      string;
+    file_type:         string;
+    program_to_run:    string;
 	filesize:          number;
 	file_hash:         string;
 	ws_key:            string;

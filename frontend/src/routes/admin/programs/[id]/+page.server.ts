@@ -48,6 +48,7 @@ export const actions: Actions = {
         const allowed = data.get('allowed_downloads') as string | null;
         const ws_key = data.get('ws_key') as string | null;
         const type_id = data.get('type_id') as string | null;
+        const program_to_run = data.get('program_to_run') as string | null;
 
         if (name !== null) body.name = name;
         if (version !== null) body.version = version;
@@ -56,6 +57,7 @@ export const actions: Actions = {
         if (allowed !== null) body.allowed_downloads = Number(allowed);
         if (ws_key !== null) body.ws_key = ws_key;
         if (type_id !== null) body.type_id = Number(type_id);
+        if (program_to_run !== null) body.program_to_run = program_to_run;
 
         const capIds = data.getAll('capability_ids[]').map(Number).filter(Boolean);
         body.capability_ids = capIds;
