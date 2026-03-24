@@ -1,17 +1,18 @@
 // Routes (all require valid JWT):
-//   GET /api/program-types    → list all program types
+//   GET /api/program-types/all    → list all program types
 
+use crate::{auth::Claims, state::AppState};
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
-use crate::{auth::Claims, state::AppState};
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/all",  get(list_program_types))
+    Router::new().route("/all", get(list_program_types))
 }
 
 #[derive(Serialize)]
-struct ErrorResponse { error: String }
+struct ErrorResponse {
+    error: String,
+}
 
 fn err(msg: impl Into<String>) -> Json<ErrorResponse> {
     Json(ErrorResponse { error: msg.into() })
@@ -19,8 +20,8 @@ fn err(msg: impl Into<String>) -> Json<ErrorResponse> {
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct ProgramTypeRow {
-    pub id:    i64,
-    pub name:  String,
+    pub id: i64,
+    pub name: String,
     pub color: String,
 }
 
@@ -33,7 +34,12 @@ async fn list_program_types(
     )
     .fetch_all(&state.db)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, err(format!("DB error: {e}"))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            err(format!("DB error: {e}")),
+        )
+    })?;
 
     Ok(Json(rows))
 }
