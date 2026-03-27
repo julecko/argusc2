@@ -1,4 +1,3 @@
--- Active: 1773665368829@@127.0.0.1@3306@argusc2_db
 use crate::state::{AppState, Device, Format};
 use axum::{
     Router,

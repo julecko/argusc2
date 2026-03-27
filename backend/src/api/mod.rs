@@ -1,7 +1,5 @@
 use crate::state::AppState;
 use axum::Router;
-use serde::Serialize;
-use uuid::Uuid;
 
 mod accounts;
 mod auth;
@@ -9,6 +7,7 @@ mod capabilities;
 mod download;
 mod program_types;
 mod programs;
+mod devices;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -18,11 +17,5 @@ pub fn router() -> Router<AppState> {
         .nest("/program-types", program_types::router())
         .nest("/download", download::router())
         .nest("/accounts", accounts::router())
-}
-
-#[derive(Serialize)]
-struct DeviceResponse {
-    id: Uuid,
-    ip: String,
-    active: bool,
+        .nest("/devices", devices::router())
 }
