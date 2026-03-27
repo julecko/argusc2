@@ -10,7 +10,7 @@ CREATE TABLE uploads (
 
     CONSTRAINT fk_upload_device
         FOREIGN KEY (device_id)
-        REFERENCES devices(id)
+        REFERENCES devices(device_id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
