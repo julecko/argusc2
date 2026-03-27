@@ -20,4 +20,3 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
 
     return { accounts };
 };
-
