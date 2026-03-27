@@ -1,92 +1,104 @@
 <script lang="ts">
-  import DeviceHeader from '$lib/components/device/DeviceHeader.svelte';
-  import DeviceInfo from '$lib/components/device/DeviceInfo.svelte';
-  import DeviceTabs from '$lib/components/device/DeviceTabs.svelte';
-  import CommandPromptTab from '$lib/components/device/tabs/CommandPromptTab.svelte';
-  import ShellSessionTab from '$lib/components/device/tabs/ShellSessionTab.svelte';
-  import FileTransferTab from '$lib/components/device/tabs/FileTransferTab.svelte';
-  import ScreenshotsTab from '$lib/components/device/tabs/ScreenshotsTab.svelte';
-  import KeyloggerTab from '$lib/components/device/tabs/KeyloggerTab.svelte';
-  import LogsTab from '$lib/components/device/tabs/LogsTab.svelte';
+	import DeviceHeader from '$lib/components/device/DeviceHeader.svelte';
+	import DeviceInfo from '$lib/components/device/DeviceInfo.svelte';
+	import DeviceTabs from '$lib/components/device/DeviceTabs.svelte';
+	import CommandPromptTab from '$lib/components/device/tabs/CommandPromptTab.svelte';
+	import ShellSessionTab from '$lib/components/device/tabs/ShellSessionTab.svelte';
+	import FileTransferTab from '$lib/components/device/tabs/FileTransferTab.svelte';
+	import ScreenshotsTab from '$lib/components/device/tabs/ScreenshotsTab.svelte';
+	import KeyloggerTab from '$lib/components/device/tabs/KeyloggerTab.svelte';
+	import LogsTab from '$lib/components/device/tabs/LogsTab.svelte';
+	import type { Device } from '$lib/types';
 
-  // Mock device data — replace with actual server load data
-  const device = {
-    name: 'DESKTOP-WIN10-01',
-    status: 'online' as const,
-    elevated: true,
-    id: 'DEV-1-SWJ65P',
-    hostname: 'DESKTOP-WIN10-01',
-    username: 'admin',
-    programId: 'PROG-001',
-    internalIp: '192.168.1.101',
-    externalIp: '203.0.113.45',
-    macAddress: 'A4:B5:C6:D7:E8:F9',
-    os: 'Windows 10 Pro',
-    architecture: 'x64',
-    cpu: 'Intel Core i7-10700',
-    cores: 8,
-    ram: '16 GB',
-    disk: '512 GB SSD',
-    country: 'US',
-    city: 'New York',
-    timezone: 'America/New_York',
-    firstSeen: '2026-01-15 09:21:44',
-    lastSeen: '2026-03-27 10:04:26',
-  };
+	// Mock device data — replace with actual server load data
+	const device: Device = {
+		name: 'DESKTOP-WIN10-01',
+		status: 'online' as const,
+		elevated: true,
+		id: 'DEV-1-SWJ65P',
+		hostname: 'DESKTOP-WIN10-01',
+		username: 'admin',
+		programId: 'PROG-001',
+		internalIp: '192.168.1.101',
+		externalIp: '203.0.113.45',
+		macAddress: 'A4:B5:C6:D7:E8:F9',
+		os: 'Windows 10 Pro',
+		architecture: 'x64',
+		cpu: 'Intel Core i7-10700',
+		cores: 8,
+		ram: '16 GB',
+		disk: '512 GB SSD',
+		country: 'US',
+		city: 'New York',
+		timezone: 'America/New_York',
+		firstSeen: '2026-01-15 09:21:44',
+		lastSeen: '2026-03-27 10:04:26'
+	};
 
-  type Tab = 'command-prompt' | 'shell-session' | 'file-transfer' | 'screenshots' | 'keylogger' | 'logs';
-  let activeTab: Tab = 'command-prompt';
+	type Tab =
+		| 'command-prompt'
+		| 'shell-session'
+		| 'file-transfer'
+		| 'screenshots'
+		| 'keylogger'
+		| 'logs';
+	let activeTab: Tab = 'command-prompt';
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'command-prompt', label: 'Command Prompt' },
-    { id: 'shell-session', label: 'Shell Session' },
-    { id: 'file-transfer', label: 'File Transfer' },
-    { id: 'screenshots', label: 'Screenshots' },
-    { id: 'keylogger', label: 'Keylogger' },
-    { id: 'logs', label: 'Logs' },
-  ];
+	const tabs: { id: Tab; label: string }[] = [
+		{ id: 'command-prompt', label: 'Command Prompt' },
+		{ id: 'shell-session', label: 'Shell Session' },
+		{ id: 'file-transfer', label: 'File Transfer' },
+		{ id: 'screenshots', label: 'Screenshots' },
+		{ id: 'keylogger', label: 'Keylogger' },
+		{ id: 'logs', label: 'Logs' }
+	];
 </script>
 
 <div class="device-page">
-  <DeviceHeader name={device.name} status={device.status} elevated={device.elevated} deviceId={device.id} />
+	<DeviceHeader
+		name={device.name}
+		status={device.status}
+		elevated={device.elevated}
+		deviceId={device.id}
+	/>
 
-  <DeviceInfo {device} />
+	<DeviceInfo {device} />
 
-  <DeviceTabs {tabs} bind:activeTab />
+	<DeviceTabs {tabs} bind:activeTab />
 
-  <div class="tab-content">
-    {#if activeTab === 'command-prompt'}
-      <CommandPromptTab />
-    {:else if activeTab === 'shell-session'}
-      <ShellSessionTab />
-    {:else if activeTab === 'file-transfer'}
-      <FileTransferTab />
-    {:else if activeTab === 'screenshots'}
-      <ScreenshotsTab />
-    {:else if activeTab === 'keylogger'}
-      <KeyloggerTab />
-    {:else if activeTab === 'logs'}
-      <LogsTab />
-    {/if}
-  </div>
+	<div class="tab-content">
+		{#if activeTab === 'command-prompt'}
+			<CommandPromptTab />
+		{:else if activeTab === 'shell-session'}
+			<ShellSessionTab />
+		{:else if activeTab === 'file-transfer'}
+			<FileTransferTab />
+		{:else if activeTab === 'screenshots'}
+			<ScreenshotsTab />
+		{:else if activeTab === 'keylogger'}
+			<KeyloggerTab />
+		{:else if activeTab === 'logs'}
+			<LogsTab />
+		{/if}
+	</div>
 </div>
 
 <style lang="scss">
-  @use '$lib/styles/variables' as *;
+	@use '$lib/styles/variables' as *;
 
-  .device-page {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 24px;
-    min-height: 100vh;
-    background: $bg-main;
-  }
+	.device-page {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 24px;
+		min-height: 100vh;
+		background: $bg-main;
+	}
 
-  .tab-content {
-    background: $bg-card;
-    border: 1px solid $border;
-    border-radius: $radius;
-    overflow: hidden;
-  }
+	.tab-content {
+		background: $bg-card;
+		border: 1px solid $border;
+		border-radius: $radius;
+		overflow: hidden;
+	}
 </style>
