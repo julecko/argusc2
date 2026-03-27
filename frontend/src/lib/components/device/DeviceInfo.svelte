@@ -1,24 +1,7 @@
 <script lang="ts">
-	export let device: {
-		hostname: string;
-		username: string;
-		programId: string;
-		internalIp: string;
-		externalIp: string;
-		macAddress: string;
-		os: string;
-		architecture: string;
-		elevated: boolean;
-		cpu: string;
-		cores: number;
-		ram: string;
-		disk: string;
-		country: string;
-		city: string;
-		timezone: string;
-		firstSeen: string;
-		lastSeen: string;
-	};
+	import type { Device } from "$lib/types";
+
+    export let device: Device;
 
 	let collapsed = false;
 </script>

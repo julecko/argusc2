@@ -34,9 +34,9 @@ export interface DataTableProps {
 
 // ── Program types (from /api/types/program-types) ─────────────────────────────
 export interface ProgramType {
-	id:    number;
-	name:  string;
-	color: string; // hex e.g. "#d62728"
+    id: number;
+    name: string;
+    color: string; // hex e.g. "#d62728"
 }
 
 // ── ProgramCapabilities ────────────────────────────────────────────────────────────────
@@ -52,31 +52,31 @@ export type ProgramOS = 'windows' | 'linux' | 'android' | 'mac';
 
 // ── Program (flat row from /api/programs list) ────────────────────────────────
 export interface Program {
-	id:                number;
-	type_id:           number;
-	type_name:         string | null;
-	type_color:        string | null;
-	uploaded_by:       number | null;
-	uploader_name:     string | null;
-	name:              string;
-	original_name:     string;
-	version:           string;
-	os:                ProgramOS;
-	storage_path:      string;
-    file_type:         string;
-    program_to_run:    string;
-	filesize:          number;
-	file_hash:         string;
-	ws_key:            string;
-	description:       string | null;
-	downloads:         number;
-	allowed_downloads: number; // -1 = unlimited, 0 = forbidden, >0 = fixed limit
-	created_at:        string;
-	updated_at:        string;
+    id: number;
+    type_id: number;
+    type_name: string | null;
+    type_color: string | null;
+    uploaded_by: number | null;
+    uploader_name: string | null;
+    name: string;
+    original_name: string;
+    version: string;
+    os: ProgramOS;
+    storage_path: string;
+    file_type: string;
+    program_to_run: string;
+    filesize: number;
+    file_hash: string;
+    ws_key: string;
+    description: string | null;
+    downloads: number;
+    allowed_downloads: number; // -1 = unlimited, 0 = forbidden, >0 = fixed limit
+    created_at: string;
+    updated_at: string;
 }
 
 export interface ProgramDetail extends Program {
-	capabilities: Array<{ id: number; name: string }>;
+    capabilities: Array<{ id: number; name: string }>;
 }
 
 // ── Accounts ────────────────────────────────────────────────────────────────
@@ -87,3 +87,32 @@ export interface Account {
     created_at: string,
     last_login: string,
 }
+
+// ── Device status ────────────────────────────────────────────────────────────────
+export type DeviceStatus = 'online' | 'offline';
+
+
+// ── Devices ────────────────────────────────────────────────────────────────
+export interface Device {
+    name: string;
+    status: DeviceStatus;
+    id: string;
+    hostname: string;
+    username: string;
+    programId: string;
+    internalIp: string;
+    externalIp: string;
+    macAddress: string;
+    os: string;
+    architecture: string;
+    elevated: boolean;
+    cpu: string;
+    cores: number;
+    ram: string;
+    disk: string;
+    country: string;
+    city: string;
+    timezone: string;
+    firstSeen: string;
+    lastSeen: string;
+};
