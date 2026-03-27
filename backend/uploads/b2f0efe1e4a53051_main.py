@@ -6,7 +6,7 @@ import time
 
 URI     = "ws://127.0.0.1:3000/ws"
 ID_FILE = ".device_id"
-WS_KEY  = "da744b4d17c28bb0e04bca8c4431f0040a1d573e219c93725c9e241de567bf27"
+WS_KEY  = "your_ws_key_from_db_here"
 FORMAT  = "csv"
 
 CAPS = [
