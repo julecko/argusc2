@@ -2,14 +2,11 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import type { Program } from '$lib/types';
 
-export const load: PageServerLoad = async ({ cookies, fetch, locals }) => {
+export const load: PageServerLoad = async ({ fetch, locals }) => {
 	if (!locals.user) redirect(302, '/login');
 
-    const token = cookies.get('token');
 
-	const res = await fetch('/api/programs', {
-        headers: { Cookie: `token=${token}` },
-    });
+	const res = await fetch('/api/programs');
 
 	if (!res.ok) return { programs: [] };
 
@@ -18,16 +15,14 @@ export const load: PageServerLoad = async ({ cookies, fetch, locals }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request, cookies, fetch, locals }) => {
+	delete: async ({ request, fetch, locals }) => {
 		if (!locals.user) redirect(302, '/login');
 
-		const token = cookies.get('token');
 		const data  = await request.formData();
 		const id    = data.get('id');
 
 		const res = await fetch(`/api/programs/${id}`, {
 			method:  'DELETE',
-			headers: { Cookie: `token=${token}` },
 		});
 
 		if (!res.ok) {

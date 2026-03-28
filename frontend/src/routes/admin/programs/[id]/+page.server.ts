@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import type { ProgramDetail, ProgramType, Capability } from '$lib/types';
 
-export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) => {
+export const load: PageServerLoad = async ({ params, fetch, locals }) => {
     if (!locals.user) redirect(302, '/login');
 
     const id = parseInt(params.id, 10);
@@ -11,18 +11,10 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
         error(400, 'Invalid program ID');
     }
 
-    const token = cookies.get('token');
-
     const [programRes, typesRes, capsRes] = await Promise.all([
-        fetch(`/api/programs/${id}`, {
-            headers: { Cookie: `token=${token}` }
-        }),
-        fetch(`/api/program-types/all`, {
-            headers: { Cookie: `token=${token}` }
-        }),
-        fetch(`/api/capabilities/all`, {
-            headers: { Cookie: `token=${token}` }
-        }),
+        fetch(`/api/programs/${id}`),
+        fetch(`/api/program-types/all`),
+        fetch(`/api/capabilities/all`),
     ]);
 
     if (programRes.status === 404) error(404, 'Program not found');
@@ -40,10 +32,9 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
 };
 
 export const actions: Actions = {
-    save: async ({ params, request, cookies, fetch, locals }) => {
+    save: async ({ params, request, fetch, locals }) => {
         if (!locals.user) redirect(302, '/login');
 
-        const token = cookies.get('token');
         const data = await request.formData();
 
         const body: Record<string, unknown> = {};
@@ -72,7 +63,6 @@ export const actions: Actions = {
         const res = await fetch(`/api/programs/${params.id}`, {
             method: 'PATCH',
             headers: {
-                Cookie: `token=${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(body),

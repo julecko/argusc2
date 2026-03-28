@@ -2,14 +2,10 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import type { Account } from '$lib/types';
 
-export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) => {
+export const load: PageServerLoad = async ({ fetch, locals }) => {
     if (!locals.user) redirect(302, '/login');
 
-    const token = cookies.get('token');
-
-    const headers = { Authorization: `Bearer ${token}` };
-
-    const accountsRes = await fetch(`/api/accounts/all`, { headers });
+    const accountsRes = await fetch(`/api/accounts/all`);
 
     if (accountsRes.status === 404) error(404, 'Accounts not found');
     if (!accountsRes.ok) {
