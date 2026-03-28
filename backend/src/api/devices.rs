@@ -59,7 +59,7 @@ async fn list_devices(
             d.last_seen,
             COUNT(k.id)    AS upload_count
         FROM devices d
-        LEFT JOIN keylog k ON k.device_id = d.device_id
+        LEFT JOIN keylog k ON k.device_id = d.id
         GROUP BY
             d.device_id, d.hostname, d.username, d.ip_external,
             d.os, d.os_version, d.last_seen
@@ -108,6 +108,7 @@ async fn list_devices(
 /// Full device detail row returned by GET /:device_id
 #[derive(Serialize)]
 pub struct DeviceDetail {
+    pub id: i64,
     // Identity
     pub device_id: String,
     pub program_id: i64,
@@ -163,6 +164,7 @@ async fn get_device(
     let row = sqlx::query!(
         r#"
         SELECT
+            d.id,
             d.device_id,
             d.program_id,
             d.hostname,
@@ -201,7 +203,7 @@ async fn get_device(
     // ── Upload count ──────────────────────────────────────────────────────
     let upload_count = sqlx::query_scalar!(
         "SELECT COUNT(*) FROM uploads WHERE device_id = ?",
-        device_id
+        row.id
     )
     .fetch_one(&state.db)
     .await
@@ -209,7 +211,7 @@ async fn get_device(
 
     // ── Event count ───────────────────────────────────────────────────────
     let event_count =
-        sqlx::query_scalar!("SELECT COUNT(*) FROM events WHERE device_id = ?", device_id)
+        sqlx::query_scalar!("SELECT COUNT(*) FROM events WHERE device_id = ?", row.id)
             .fetch_one(&state.db)
             .await
             .unwrap_or(0);
@@ -223,7 +225,7 @@ async fn get_device(
         ORDER BY created_at DESC
         LIMIT 10
         "#,
-        device_id
+        row.id
     )
     .fetch_all(&state.db)
     .await
@@ -249,6 +251,7 @@ async fn get_device(
     };
 
     Ok(Json(DeviceDetail {
+        id: row.id as i64,
         device_id: row.device_id,
         program_id: row.program_id as i64,
         hostname: row.hostname,

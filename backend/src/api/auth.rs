@@ -3,7 +3,8 @@
 use axum::{
     Json, Router,
     extract::State,
-    http::StatusCode,
+    http::{StatusCode, header::SET_COOKIE},
+    response::Response,
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
@@ -19,14 +20,10 @@ pub fn router() -> Router<AppState> {
         .route("/setup", post(setup))
         .route("/login", post(login))
         .route("/verify", get(verify))
+        .route("/logout", post(logout))
 }
 
 // ── Shared response types ─────────────────────────────────────────────────────
-
-#[derive(Serialize)]
-struct TokenResponse {
-    token: String,
-}
 
 #[derive(Serialize)]
 struct ErrorResponse {
@@ -157,7 +154,7 @@ struct AdminRow {
 async fn login(
     State(state): State<AppState>,
     Json(body): Json<LoginRequest>,
-) -> Result<Json<TokenResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
     let row = sqlx::query_as::<_, AdminRow>("SELECT password_hash FROM admins WHERE username = ?")
         .bind(&body.username)
         .fetch_optional(&state.db)
@@ -197,7 +194,36 @@ async fn login(
     let token = create_token(&body.username)
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, err("Token error")))?;
 
-    Ok(Json(TokenResponse { token }))
+    let cookie = format!(
+        "token={}; Path=/; HttpOnly; SameSite=Strict; {}",
+        token,
+        if cfg!(debug_assertions) {
+            ""
+        } else {
+            "Secure;"
+        }
+    );
+
+    let mut res = Response::new("OK".into());
+    *res.status_mut() = StatusCode::OK;
+    res.headers_mut()
+        .insert(SET_COOKIE, cookie.parse().unwrap());
+
+    Ok(res)
+}
+
+async fn logout(
+    State(_state): State<AppState>,
+) -> Response {
+    let cookie = "token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0";
+
+    let mut res = Response::new("OK".into());
+    *res.status_mut() = StatusCode::OK;
+
+    res.headers_mut()
+        .insert(SET_COOKIE, cookie.parse().unwrap());
+
+    res
 }
 
 // ── GET /api/auth/verify ──────────────────────────────────────────────────────

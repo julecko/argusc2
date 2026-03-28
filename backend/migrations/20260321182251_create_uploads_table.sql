@@ -9,8 +9,8 @@ CREATE TABLE uploads (
     uploaded_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_upload_device
-        FOREIGN KEY (device_id)
-        REFERENCES devices(device_id)
+        FOREIGN KEY (id)
+        REFERENCES devices(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );

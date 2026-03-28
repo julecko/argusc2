@@ -18,8 +18,14 @@
 	}
 
 	async function handleLogout() {
-		document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
-		goto('/login');
+		try {
+			await fetch('/api/auth/logout', {
+				method: 'POST',
+				credentials: 'include'
+			});
+		} finally {
+			goto('/login');
+		}
 	}
 
 	$: initials = username
@@ -106,7 +112,7 @@
 		align-items: center;
 		gap: 10px;
 		width: 100%;
-        box-sizing: border-box;
+		box-sizing: border-box;
 		background: transparent;
 		border: 1px solid transparent;
 		border-radius: $radius;
@@ -173,7 +179,7 @@
 		color: $text-muted;
 		flex-shrink: 0;
 		transition: transform $transition;
-        margin-right: 5px;
+		margin-right: 5px;
 
 		&--open {
 			transform: rotate(180deg);
@@ -183,7 +189,7 @@
 	.user-popup {
 		position: absolute;
 		bottom: calc(100% + 8px);
-        z-index: 10;
+		z-index: 10;
 		left: 0;
 		right: 0;
 		background: $bg-sidebar;

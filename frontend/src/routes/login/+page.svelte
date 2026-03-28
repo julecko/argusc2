@@ -15,21 +15,21 @@
 			const res = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, password })
+				body: JSON.stringify({ username, password }),
+				credentials: 'include'
 			});
 
-			const data = await res.json();
-
 			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
 				error = data.error ?? 'Login failed.';
 				loading = false;
 				return;
 			}
 
-			document.cookie = `token=${data.token}; path=/; SameSite=Strict; httpOnly: true; secure: true`;
-			goto('/admin/dashboard');
+			await goto('/admin/dashboard');
 		} catch {
 			error = 'Could not reach the server.';
+		} finally {
 			loading = false;
 		}
 	}
