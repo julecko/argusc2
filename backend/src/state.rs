@@ -1,7 +1,9 @@
+// src/state.rs
+
 use crate::db::Db;
 use sqlx::Pool;
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc, oneshot};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Format {
@@ -31,4 +33,28 @@ impl Device {
 pub struct AppState {
     pub devices: Arc<RwLock<HashMap<String, Device>>>,
     pub db: Pool<Db>,
+
+    /// device_id → sender into the implant's write loop.
+    /// Inserted when an implant completes handshake; removed on disconnect.
+    pub implant_senders: Arc<RwLock<HashMap<String, mpsc::Sender<String>>>>,
+
+    /// device_id → one sender per open browser tab watching that device.
+    /// The implant handler pushes events/status here; frontend handler reads them.
+    pub frontend_senders: Arc<RwLock<HashMap<String, Vec<mpsc::Sender<String>>>>>,
+
+    /// cmd_id → one-shot resolver.
+    /// Frontend handler inserts before forwarding; implant handler resolves on CMD_OK/FAIL.
+    pub pending_cmds: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
+}
+
+impl AppState {
+    pub fn new(db: Pool<Db>) -> Self {
+        Self {
+            devices: Arc::new(RwLock::new(HashMap::new())),
+            db,
+            implant_senders: Arc::new(RwLock::new(HashMap::new())),
+            frontend_senders: Arc::new(RwLock::new(HashMap::new())),
+            pending_cmds: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
 }

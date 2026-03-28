@@ -17,6 +17,7 @@
 		name: 'DESKTOP-WIN10-01',
 		status: 'online' as const,
 		elevated: true,
+        device_id: "0a27e921-6c46-4aec-9e84-835014ca1f22",
 		id: 'DEV-1-SWJ65P',
 		hostname: 'DESKTOP-WIN10-01',
 		username: 'admin',
@@ -46,7 +47,7 @@
     };
 
 	onMount(() => {
-		socket = createDeviceSocket(device.id);
+		socket = createDeviceSocket(device.device_id);
 
 		const unsubscribe = socket.subscribe((s) => {
 			state = s;

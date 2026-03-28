@@ -19,10 +19,7 @@ async fn main() {
     let _guard: logger::LoggerGuard = logger::init();
     let db = db::connect().await;
 
-    let app_state = AppState { 
-        devices: Default::default(),
-        db 
-    };
+    let app_state = AppState::new(db);
 
     let static_files = ServeDir::new("../frontend/build")
         .fallback(ServeFile::new("../frontend/build/index.html"));

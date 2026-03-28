@@ -95,6 +95,7 @@ export type DeviceStatus = 'online' | 'offline';
 // ── Devices ────────────────────────────────────────────────────────────────
 export interface Device {
     name: string;
+    device_id: string;
     status: DeviceStatus;
     id: string;
     hostname: string;
