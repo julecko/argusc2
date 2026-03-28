@@ -1,25 +1,38 @@
 <script lang="ts">
-	let taking = false;
+	import type { createDeviceSocket } from '$lib/stores/deviceSocket';
 
-	let screenshots = [
-		{ name: 'screenshot_2026-03-27_09-46-23.png', time: '3/27/2026, 9:02:59 AM' },
-		{ name: 'screenshot_2026-03-27_08-16-18.png', time: '3/27/2026, 8:02:59 AM' }
-	];
+	export let socket: ReturnType<typeof createDeviceSocket>;
+
+	let taking = false;
+	let screenshots: { name: string; time: string; dataUrl?: string }[] = [];
 
 	async function takeScreenshot() {
 		taking = true;
-		await new Promise((r) => setTimeout(r, 1500));
-		const now = new Date();
-		const timestamp = now.toLocaleString();
-		const pad = (n: number) => String(n).padStart(2, '0');
-		const fileName = `screenshot_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.png`;
-		screenshots = [{ name: fileName, time: timestamp }, ...screenshots];
+		const result = await socket.sendCmd('screenshot');
+
+		if (result.ok) {
+			const now = new Date();
+			const pad = (n: number) => String(n).padStart(2, '0');
+			const fileName = `screenshot_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.png`;
+			screenshots = [
+				{
+					name: fileName,
+					time: now.toLocaleString(),
+					// result.data is expected to be a base64 PNG from the implant
+					dataUrl: result.data ? `data:image/png;base64,${result.data}` : undefined
+				},
+				...screenshots
+			];
+		}
 		taking = false;
 	}
 
-	function download(name: string) {
-		// Replace with real download logic
-		console.log('Download', name);
+	function download(ss: { name: string; dataUrl?: string }) {
+		if (!ss.dataUrl) return;
+		const a = document.createElement('a');
+		a.href = ss.dataUrl;
+		a.download = ss.name;
+		a.click();
 	}
 </script>
 
@@ -75,7 +88,7 @@
 						<span class="ss-name">{ss.name}</span>
 						<span class="ss-time">{ss.time}</span>
 					</div>
-					<button class="dl-btn" on:click={() => download(ss.name)}>
+					<button class="dl-btn" on:click={() => download(ss)} disabled={!ss.dataUrl}>
 						<svg width="13" height="13" viewBox="0 0 16 16" fill="none">
 							<path
 								d="M8 1v9M5 7l3 3 3-3M2 13h12"
@@ -226,9 +239,12 @@
 		cursor: pointer;
 		flex-shrink: 0;
 		transition: all $transition;
-
-		&:hover {
+		&:hover:not(:disabled) {
 			background: #15803d;
+		}
+		&:disabled {
+			opacity: 0.4;
+			cursor: not-allowed;
 		}
 	}
 </style>

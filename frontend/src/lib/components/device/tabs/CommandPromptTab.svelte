@@ -1,8 +1,11 @@
 <script lang="ts">
 	import TerminalOutput from '$lib/components/device/TerminalOutput.svelte';
+	import type { createDeviceSocket } from '$lib/stores/deviceSocket';
+
+	export let socket: ReturnType<typeof createDeviceSocket>;
 
 	let command = '';
-	let output: string[] = ['$ Connected to remote command prompt', '$ Waiting for commands...'];
+	let lines: string[] = ['$ Connected to remote command prompt', '$ Waiting for commands...'];
 	let loading = false;
 
 	async function execute() {
@@ -10,11 +13,15 @@
 		const cmd = command.trim();
 		command = '';
 		loading = true;
-		output = [...output, `$ ${cmd}`];
+		lines = [...lines, `$ ${cmd}`];
 
-		// Simulate response — replace with real API call
-		await new Promise((r) => setTimeout(r, 800));
-		output = [...output, `> [Output of: ${cmd}]`];
+		const result = await socket.sendCmd('cmd', cmd);
+
+		if (result.ok) {
+			lines = [...lines, ...(result.data?.split('\n') ?? ['[no output]'])];
+		} else {
+			lines = [...lines, `[ERROR] ${result.error ?? 'Unknown error'}`];
+		}
 		loading = false;
 	}
 
@@ -49,7 +56,7 @@
 		<p class="panel-desc">Execute one-off commands on the remote device</p>
 	</div>
 
-	<TerminalOutput lines={output} {loading} />
+	<TerminalOutput {lines} {loading} />
 
 	<div class="input-row">
 		<input
@@ -61,9 +68,9 @@
 			disabled={loading}
 		/>
 		<button class="execute-btn" on:click={execute} disabled={loading || !command.trim()}>
-			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-				<path d="M3 2l12 6-12 6V2z" />
-			</svg>
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"
+				><path d="M3 2l12 6-12 6V2z" /></svg
+			>
 			Execute
 		</button>
 	</div>

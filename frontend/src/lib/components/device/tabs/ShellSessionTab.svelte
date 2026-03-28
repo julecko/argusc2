@@ -1,5 +1,8 @@
 <script lang="ts">
 	import TerminalOutput from '$lib/components/device/TerminalOutput.svelte';
+	import type { createDeviceSocket } from '$lib/stores/deviceSocket';
+
+	export let socket: ReturnType<typeof createDeviceSocket>;
 
 	let command = '';
 	let loading = false;
@@ -15,11 +18,17 @@
 		if (!command.trim() || loading || !sessionActive) return;
 		const cmd = command.trim();
 		command = '';
-		lines = [...lines, cmd, '> Processing...'];
+		lines = [...lines, cmd];
 		loading = true;
 
-		await new Promise((r) => setTimeout(r, 700));
-		lines = [...lines.slice(0, -1), '[Simulated output from command]', 'C:\\Users\\admin>'];
+		const result = await socket.sendCmd('shell', cmd);
+
+		if (result.ok) {
+			const outputLines = result.data?.split('\n') ?? [];
+			lines = [...lines, ...outputLines, 'C:\\Users\\admin>'];
+		} else {
+			lines = [...lines, `[ERROR] ${result.error ?? 'Command failed'}`, 'C:\\Users\\admin>'];
+		}
 		loading = false;
 	}
 
@@ -59,9 +68,9 @@
 			<p class="panel-desc">Start an interactive shell session with persistent state</p>
 		</div>
 		<button class="kill-btn" on:click={killShell} disabled={!sessionActive}>
-			<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-				<rect x="2" y="2" width="12" height="12" rx="2" />
-			</svg>
+			<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"
+				><rect x="2" y="2" width="12" height="12" rx="2" /></svg
+			>
 			Kill Shell
 		</button>
 	</div>
@@ -82,9 +91,9 @@
 			on:click={send}
 			disabled={loading || !command.trim() || !sessionActive}
 		>
-			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-				<path d="M3 2l12 6-12 6V2z" />
-			</svg>
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"
+				><path d="M3 2l12 6-12 6V2z" /></svg
+			>
 			Send
 		</button>
 	</div>
@@ -178,9 +187,9 @@
 		outline: none;
 		transition: border-color $transition;
 
-        &::placeholder {
-            color: $text-muted;
-        }
+		&::placeholder {
+			color: $text-muted;
+		}
 		&:focus {
 			border-color: rgba(231, 0, 11, 0.4);
 		}

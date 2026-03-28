@@ -185,11 +185,8 @@
 		border-right: 1px solid $border;
 		border-bottom: 1px solid $border;
 
-		&:nth-child(3n) {
+		&:last-child {
 			border-right: none;
-		}
-		&:nth-last-child(-n + 3) {
-			border-bottom: none;
 		}
 	}
 
