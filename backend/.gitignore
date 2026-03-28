@@ -4,3 +4,4 @@ logs/
 files/
 .device_id
 uploads/
+argusc2_db.session.sql
