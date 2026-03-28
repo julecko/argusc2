@@ -5,19 +5,13 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use axum::{
-    RequestPartsExt,
     extract::FromRequestParts,
     http::{StatusCode, request::Parts},
-};
-use axum_extra::{
-    TypedHeader,
-    headers::{Authorization, authorization::Bearer},
 };
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 
 fn jwt_secret() -> String {
     std::env::var("JWT_SECRET").unwrap_or_else(|_| {
@@ -86,7 +80,6 @@ pub fn decode_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> 
     Ok(data.claims)
 }
 
-
 impl<S> FromRequestParts<S> for Claims
 where
     S: Send + Sync,
@@ -94,22 +87,31 @@ where
     type Rejection = (StatusCode, &'static str);
 
     fn from_request_parts(
-        parts: &mut Parts,
+        __parts__: &mut Parts,
         _state: &S,
     ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
         async move {
-            let TypedHeader(Authorization(bearer)) = parts
-                .extract::<TypedHeader<Authorization<Bearer>>>()
-                .await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Missing or invalid Authorization header",
-                    )
-                })?;
+            let token = __parts__
+                .headers
+                .get("Token")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    __parts__
+                        .headers
+                        .get("cookie")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|cookies| {
+                            cookies
+                                .split(';')
+                                .map(|c| c.trim())
+                                .find(|c| c.starts_with("token="))
+                                .map(|c| c["token=".len()..].to_string())
+                        })
+                })
+                .ok_or((StatusCode::UNAUTHORIZED, "Missing Token header or cookie"))?;
 
-            decode_token(bearer.token())
-                .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid or expired token"))
+            decode_token(&token).map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid or expired token"))
         }
     }
 }

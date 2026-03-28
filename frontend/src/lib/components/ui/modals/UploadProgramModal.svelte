@@ -21,11 +21,9 @@
 		loadingMeta = true;
 		metaError = '';
 		try {
-			const token = getToken();
-			const headers = { Authorization: `Bearer ${token}` };
 			const [typesRes, capsRes] = await Promise.all([
-				fetch('/api/program-types/all', { headers }),
-				fetch('/api/capabilities/all', { headers })
+				fetch('/api/program-types/all'),
+				fetch('/api/capabilities/all')
 			]);
 			if (typesRes.ok) programTypes = await typesRes.json();
 			if (capsRes.ok) capabilities = await capsRes.json();
@@ -68,15 +66,6 @@
     $: isOther = fileType === 'other';
 
 	// ── Helpers ───────────────────────────────────────────────
-	function getToken(): string {
-		return (
-			document.cookie
-				.split('; ')
-				.find((c) => c.startsWith('token='))
-				?.split('=')[1] ?? ''
-		);
-	}
-
 	function handleFileChange(e: CustomEvent<File>) {
 		programName = e.detail.name;
 	}
@@ -125,7 +114,6 @@
 
 			const res = await fetch('/api/programs', {
 				method: 'POST',
-				headers: { Authorization: `Bearer ${getToken()}` },
 				body: fd
 			});
 

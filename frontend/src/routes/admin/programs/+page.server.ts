@@ -5,11 +5,11 @@ import type { Program } from '$lib/types';
 export const load: PageServerLoad = async ({ cookies, fetch, locals }) => {
 	if (!locals.user) redirect(302, '/login');
 
-	const token = cookies.get('token');
+    const token = cookies.get('token');
 
 	const res = await fetch('/api/programs', {
-		headers: { Authorization: `Bearer ${token}` },
-	});
+        headers: { Cookie: `token=${token}` },
+    });
 
 	if (!res.ok) return { programs: [] };
 
@@ -27,7 +27,7 @@ export const actions: Actions = {
 
 		const res = await fetch(`/api/programs/${id}`, {
 			method:  'DELETE',
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { Cookie: `token=${token}` },
 		});
 
 		if (!res.ok) {

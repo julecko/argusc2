@@ -5,17 +5,24 @@ import type { ProgramDetail, ProgramType, Capability } from '$lib/types';
 export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) => {
     if (!locals.user) redirect(302, '/login');
 
-    const id    = parseInt(params.id, 10);
+    const id = parseInt(params.id, 10);
+
+    if (isNaN(id)) {
+        error(400, 'Invalid program ID');
+    }
+
     const token = cookies.get('token');
 
-    if (isNaN(id)) error(400, 'Invalid program ID');
-
-    const headers = { Authorization: `Bearer ${token}` };
-
     const [programRes, typesRes, capsRes] = await Promise.all([
-        fetch(`/api/programs/${id}`, { headers }),
-        fetch(`/api/program-types/all`,  { headers }),
-        fetch(`/api/capabilities/all`,   { headers }),
+        fetch(`/api/programs/${id}`, {
+            headers: { Cookie: `token=${token}` }
+        }),
+        fetch(`/api/program-types/all`, {
+            headers: { Cookie: `token=${token}` }
+        }),
+        fetch(`/api/capabilities/all`, {
+            headers: { Cookie: `token=${token}` }
+        }),
     ]);
 
     if (programRes.status === 404) error(404, 'Program not found');
@@ -27,7 +34,7 @@ export const load: PageServerLoad = async ({ params, cookies, fetch, locals }) =
     const program: ProgramDetail = await programRes.json();
 
     const programTypes: ProgramType[] = typesRes.ok ? await typesRes.json() : [];
-    const capabilities: Capability[]  = capsRes.ok  ? await capsRes.json()  : [];
+    const capabilities: Capability[] = capsRes.ok ? await capsRes.json() : [];
 
     return { program, programTypes, capabilities };
 };
@@ -65,7 +72,7 @@ export const actions: Actions = {
         const res = await fetch(`/api/programs/${params.id}`, {
             method: 'PATCH',
             headers: {
-                Authorization: `Bearer ${token}`,
+                Cookie: `token=${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(body),

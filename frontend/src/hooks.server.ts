@@ -23,7 +23,7 @@ async function getSetupRequired(): Promise<boolean> {
 
 async function verifyToken(token: string): Promise<string | null> {
     const res = await safeFetch(`${API_BASE}/api/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `token=${token}` },
     });
 
     if (!res.ok) {
