@@ -116,3 +116,14 @@ export interface Device {
     firstSeen: string;
     lastSeen: string;
 };
+
+export interface DeviceSummary {
+    device_id: string;
+    hostname: string;
+    username: string;
+    ip_external: string;
+    os: string;
+    os_version: string;
+    is_online: string;
+    last_seen: number;
+}

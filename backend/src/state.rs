@@ -12,10 +12,8 @@ pub enum Format {
 #[derive(Debug, Clone)]
 pub struct Device {
     pub id: String,
-    pub ip: String,
     pub active: bool,
     pub format: Format,
-    pub program_id: i32,
     pub caps: Vec<String>,
     pub keylog_buf: String,
     pub keylog_last_flush: std::time::Instant,

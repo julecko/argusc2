@@ -178,9 +178,9 @@
 		outline: none;
 		transition: border-color $transition;
 
-        &::placeholder {
-            color: $text-muted;
-        }
+		&::placeholder {
+			color: $text-muted;
+		}
 		&:focus {
 			border-color: rgba(231, 0, 11, 0.4);
 		}
